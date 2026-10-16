@@ -392,7 +392,7 @@ div.empty p { margin: 0 0 14px; }
   box-shadow: 0 0 0 1px var(--rule), 0 1px 1px var(--shadow), 0 10px 22px -14px var(--shadow);
   transition: translate 160ms var(--ease), box-shadow 160ms var(--ease);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .card:hover {
     translate: 0 -1px;
     box-shadow: 0 0 0 1px var(--rule), 0 2px 3px var(--shadow), 0 16px 30px -14px var(--shadow);
