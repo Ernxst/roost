@@ -173,7 +173,7 @@ const edgeCases: Bookmark[] = [
     quoted: tweet("fixture-quote-15", rtl, "A long quoted passage with enough words to check how nested text wraps when both the original author and the quote have long content."),
   })),
   bookmark(tweet("fixture-worst-16", oneLetter, "A post with a missing optional note, no media, and no collection should leave no placeholder gap.", undefined, {
-    media: [photo("fixture-gone", 1600, 900)],
+    media: [video("fixture-gone", 1080, 1350)],
   }), { removedAt: iso(-4 * DAY), threadLength: 18 }),
   bookmark(tweet("fixture-worst-17", emoji, "Set aside from sorting: it waits outside the queue."), { asideAt: iso(-DAY) }),
 ];
