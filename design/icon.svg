@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbf7ee"/>
+      <stop offset="1" stop-color="#ebe1cc"/>
+    </linearGradient>
+    <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b5361a"/>
+      <stop offset="0.5" stop-color="#d84f29"/>
+      <stop offset="1" stop-color="#c0401d"/>
+    </linearGradient>
+    <linearGradient id="breast" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8692f"/>
+      <stop offset="1" stop-color="#c8401c"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.35" cy="0.25" r="0.8">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#2a1f10" flood-opacity="0.26"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="5" dy="9" stdDeviation="9" flood-color="#5a3a1a" flood-opacity="0.22"/>
+    </filter>
+    <clipPath id="card"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+    <clipPath id="bird">
+      <ellipse cx="390" cy="492" rx="130" ry="94" transform="rotate(-14 390 492)"/>
+      <circle cx="492" cy="394" r="72"/>
+    </clipPath>
+  </defs>
+
+  <!-- the card -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#paper)" filter="url(#drop)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#sheen)"/>
+
+  <g clip-path="url(#card)">
+    <!-- faint journal rules -->
+    <g stroke="#b5a383" stroke-opacity="0.3" stroke-width="5">
+      <line x1="100" y1="712" x2="924" y2="712"/>
+      <line x1="100" y1="802" x2="924" y2="802"/>
+    </g>
+    <!-- the perch: an ink rule on the page -->
+    <line x1="80" y1="616" x2="944" y2="616" stroke="#1d1a14" stroke-width="22"/>
+    <!-- the ribbon lies over the page -->
+    <path d="M664 70 H808 V812 L736 752 L664 812 Z" fill="url(#ribbon)" filter="url(#soft)"/>
+  </g>
+
+  <!-- the robin -->
+  <g stroke="#1d1a14" stroke-width="13" stroke-linecap="round">
+    <line x1="372" y1="566" x2="362" y2="608"/>
+    <line x1="414" y1="568" x2="418" y2="608"/>
+  </g>
+  <path d="M292 500 L160 560 Q152 578 172 580 L316 552 Z" fill="#1d1a14"/>
+  <ellipse cx="390" cy="492" rx="130" ry="94" transform="rotate(-14 390 492)" fill="#1d1a14"/>
+  <circle cx="492" cy="394" r="72" fill="#1d1a14"/>
+  <g clip-path="url(#bird)">
+    <ellipse cx="505" cy="515" rx="92" ry="112" fill="url(#breast)"/>
+    <ellipse cx="340" cy="476" rx="96" ry="46" transform="rotate(-12 340 476)" fill="#3b342b"/>
+  </g>
+  <path d="M556 380 L606 398 L556 414 Z" fill="#e9a53a"/>
+  <circle cx="518" cy="382" r="11.5" fill="#fbf7ee"/>
+</svg>
