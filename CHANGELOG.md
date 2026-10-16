@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.2.1
+
+Sync reads your whole library again, roost has a new icon, and long names,
+long posts and failed pages no longer break the layout.
+
+- Sync reads every bookmark again. It had been stopping after the first 20
+  and never reaching the end of the library.
+- roost's icon is a drawer of index cards with a red tab on the saved one.
+- A long or failed sync message appears in a notice under the toolbar
+  instead of squeezing the search box. A failed sync says what went wrong
+  in a sentence, with the original error under Technical details and Try
+  again beside it.
+- Long posts are cut to eight lines in the feed and Revisit, with Show
+  more to read the rest.
+- Posts that X had removed from your bookmarks are now called Missing from
+  bookmarks.
+- Images carry the descriptions their authors wrote on X, for VoiceOver.
+  Posts you already kept gain them the first time this version opens.
+- With a post open, Tab stays inside it, and closing it puts you back
+  where you were.
+- A setting that fails to save goes back to its old value and offers to
+  try again.
+- Duplicates stays readable when a post is filed in many collections.
+- A link in brackets opens the page it points to.
+- A collection with quotes in its name filters the author page correctly.
+- Saved links that couldn't be fetched say why in a sentence.
+- The media wall marks images that aren't on this Mac, and its Missing
+  label no longer covers the video badge.
+- Authors whose name starts with an emoji, or who have no name, get the
+  right initial.
+- Settings counts large media libraries in TB, and "1 file" in the
+  singular.
+- Revisit with nothing to show points you to Sync.
+- Collection names are limited to 80 characters, field notes to 2,000 and
+  highlights to 10,000. Longer names and notes you already have stay as
+  they are.
+
 ## 0.2.0
 
 Posts in other languages now read in English, search completes what you
