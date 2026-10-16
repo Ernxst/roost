@@ -1117,7 +1117,7 @@ mark { background: var(--highlight); color: inherit; padding: 0 1px; border-radi
   .sync { display: contents; }
   .sync-buttons { margin-left: auto; }
   .ticker { order: 1; flex: 1 1 100%; white-space: normal; }
-  .feed, .sorter, .revisit, .highlights-view { padding-inline: 16px; }
+  .feed, .sorter, .revisit, .highlights-view, .wall-view, .dupes-view { padding-inline: 16px; }
   .feed-head h1 { font-size: 34px; }
 }
 
