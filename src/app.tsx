@@ -771,14 +771,17 @@ function useKeyboard() {
         return;
       }
       if (typing(e)) return;
+      // Search narrows the sorting queue too, so / works everywhere.
+      if (e.key === "/") {
+        e.preventDefault();
+        document.getElementById("search")?.focus();
+        return;
+      }
       if (view.value.kind === "sort") return;
       const list = items.value;
       const at = list.findIndex((b) => b.tweet.id === cursor.value);
       const current = at >= 0 ? list[at] : undefined;
-      if (e.key === "/") {
-        e.preventDefault();
-        document.getElementById("search")?.focus();
-      } else if (e.key === "j" || e.key === "k") {
+      if (e.key === "j" || e.key === "k") {
         const next = list[Math.min(list.length - 1, Math.max(0, at + (e.key === "j" ? 1 : -1)))];
         if (next) {
           cursor.value = next.tweet.id;
