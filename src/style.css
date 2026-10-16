@@ -416,7 +416,7 @@ div.empty p { margin: 0 0 14px; }
   padding: 0;
 }
 .card .open:focus-visible { outline-offset: 3px; }
-.card a, .card video { position: relative; z-index: 2; }
+.card a, .card video, .card .translated button { position: relative; z-index: 2; }
 
 .byline { display: flex; align-items: center; gap: 9px; min-width: 0; }
 /* Names wrap rather than truncate: the card's open button covers the byline,
@@ -455,6 +455,24 @@ div.empty p { margin: 0 0 14px; }
   overflow-wrap: anywhere;
   text-wrap: pretty;
 }
+.translated {
+  margin: 6px 0 0;
+  font: 11px/1.4 var(--mono);
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+}
+.translated button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 3px;
+}
+@media (hover: hover) { .translated button:hover { color: var(--ink); text-decoration-color: currentColor; } }
+
 .text a {
   color: inherit;
   text-decoration: underline;

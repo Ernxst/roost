@@ -19,15 +19,56 @@ function Ext({ href, children }: { href: string; children: JSX.Element | string 
   );
 }
 
+const languages = new Intl.DisplayNames(undefined, { type: "language" });
+const languageName = (code: string) => {
+  try {
+    return languages.of(code) ?? code;
+  } catch {
+    return code;
+  }
+};
+
 /**
  * Post text with t.co links expanded and mentions, hashtags and URLs linked.
- * `mark` dresses the plain runs between links, such as to show highlights.
+ * A post in another language shows X's translation, with the original a
+ * click away. `mark` dresses the plain runs between links, such as to show
+ * highlights.
  */
 export function Text({ tweet, mark = (s) => s }: { tweet: Tweet; mark?: (text: string) => ComponentChildren }) {
+  const [original, setOriginal] = useState(false);
+  const tr = tweet.translation;
+  const translated = tr && !original;
+  return (
+    <>
+      <Linked tweet={tweet} mark={mark} text={translated ? tr.text : tweet.text} lang={translated ? tr.to : tr?.from} />
+      {tr && (
+        <p class="translated">
+          {translated ? `Translated from ${languageName(tr.from)}` : `Written in ${languageName(tr.from)}`}
+          {" · "}
+          <button type="button" onClick={() => setOriginal(!original)}>
+            {original ? "Show translation" : "Show original"}
+          </button>
+        </p>
+      )}
+    </>
+  );
+}
+
+function Linked({
+  tweet,
+  text: raw,
+  lang,
+  mark,
+}: {
+  tweet: Tweet;
+  text: string;
+  lang?: string;
+  mark: (text: string) => ComponentChildren;
+}) {
   const links = new Map(tweet.links.map((l) => [l.short, l]));
   const out: ComponentChildren[] = [];
   const pattern = /(https?:\/\/\S+)|(@\w{1,15})|(#[\p{L}\p{N}_]+)/gu;
-  const text = decode(tweet.text);
+  const text = decode(raw);
   let last = 0;
   for (const m of text.matchAll(pattern)) {
     out.push(mark(text.slice(last, m.index)));
@@ -44,7 +85,7 @@ export function Text({ tweet, mark = (s) => s }: { tweet: Tweet; mark?: (text: s
   }
   out.push(mark(text.slice(last)));
   return (
-    <p class="text" dir="auto">
+    <p class="text" dir="auto" lang={lang}>
       {out}
     </p>
   );
