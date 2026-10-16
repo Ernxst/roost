@@ -42,8 +42,9 @@ function CardBody({ b }: { b: Bookmark }) {
   const ref = useRef<HTMLElement>(null);
   // Watches only whether this card holds the cursor, so moving it re-renders two cards.
   const active = useComputed(() => cursor.value === t.id).value;
+  // The cursor moves by key, often with the key held down, so the feed jumps rather than glides to it.
   useEffect(() => {
-    if (active) ref.current?.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    if (active) ref.current?.scrollIntoView({ block: "nearest" });
   }, [active]);
   return (
     <article
