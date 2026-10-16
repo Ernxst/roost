@@ -563,7 +563,7 @@ div.empty p { margin: 0 0 14px; }
   width: min(460px, 92vw);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: calc(var(--titlebar) - 12px) 28px 40px;
+  padding: 0 28px 40px;
   background: var(--card);
   box-shadow: -1px 0 0 var(--rule), -28px 0 56px -28px var(--shadow);
   outline: none;
@@ -577,7 +577,17 @@ div.empty p { margin: 0 0 14px; }
   @keyframes fade-in { from { opacity: 0; } }
 }
 
-.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+/* The head stays in view while a long post or dialog scrolls, so ✕ is always in reach. */
+.sheet-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: calc(var(--titlebar) - 12px) 18px;
+  background: var(--card);
+}
 .sheet-kicker {
   font: 600 11px var(--mono);
   text-transform: uppercase;
@@ -880,7 +890,8 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 .settings[open] { animation: settle 180ms var(--ease); }
 @keyframes settle { from { opacity: 0; scale: 0.98; } }
 @media (prefers-reduced-motion: reduce) { .settings[open] { animation: none; } }
-.settings-body { padding: 20px 24px 24px; }
+.settings-body { padding: 0 24px 24px; }
+.settings .sheet-head { padding-top: 20px; }
 .settings h2 { margin: 0; }
 .setting { padding: 14px 0; border-top: 1px solid var(--rule); display: grid; gap: 10px; }
 .setting h3 { margin: 0; font: 600 17px var(--serif); }
