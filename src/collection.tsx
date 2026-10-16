@@ -1,4 +1,5 @@
 import { useSignal } from "@preact/signals";
+import { useEffect, useRef } from "preact/hooks";
 import { ink } from "./card";
 import type { Collection } from "./mygo";
 import { deleteCollection, errorText, HUES, updateCollection } from "./state";
@@ -27,6 +28,14 @@ export function CollectionEditor({ c, onClose }: { c: Collection; onClose: () =>
   const query = useSignal(c.query);
   const error = useSignal("");
   const confirming = useSignal(false);
+  const nameField = useRef<HTMLInputElement>(null);
+  const keep = useRef<HTMLButtonElement>(null);
+
+  // Focus moves only when the editor opens or the delete question appears, never on a re-render.
+  useEffect(() => nameField.current?.focus(), []);
+  useEffect(() => {
+    if (confirming.value) keep.current?.focus();
+  }, [confirming.value]);
 
   async function save(e: Event) {
     e.preventDefault();
@@ -59,7 +68,7 @@ export function CollectionEditor({ c, onClose }: { c: Collection; onClose: () =>
           autoComplete="off"
           aria-invalid={error.value ? "true" : undefined}
           aria-describedby={error.value ? "collection-error" : undefined}
-          ref={(el) => el?.focus()}
+          ref={nameField}
         />
       </label>
       {c.query && (
@@ -88,7 +97,7 @@ export function CollectionEditor({ c, onClose }: { c: Collection; onClose: () =>
           <button type="button" class="press danger" onClick={remove}>
             Delete collection
           </button>
-          <button type="button" class="press quiet" onClick={() => (confirming.value = false)} ref={(el) => el?.focus()}>
+          <button type="button" class="press quiet" onClick={() => (confirming.value = false)} ref={keep}>
             Keep it
           </button>
         </div>
