@@ -487,6 +487,7 @@ function Feed() {
           {loading.value && items.value.length === 0 ? "Loading…" : count(total.value, "post")}
           {search.value && ` matching “${search.value}”`}
         </span>
+        {shown && !isFixtureMode && <ShareCollection id={shown.id} />}
         {shown && !isFixtureMode && (
           <button
             ref={editButton}
@@ -541,6 +542,27 @@ function emptyText(v: View): string {
 }
 
 /** Actions on the selected bookmarks, shown while any are selected. */
+/** Saves the collection as one Markdown file to send to someone. */
+function ShareCollection({ id }: { id: number }) {
+  const saving = useSignal(false);
+  async function share() {
+    saving.value = true;
+    try {
+      const path = await Library.shareCollection(id);
+      if (path) announce(`Saved ${path.split("/").pop()}`);
+    } catch (err) {
+      fail(err);
+    } finally {
+      saving.value = false;
+    }
+  }
+  return (
+    <button class="chip share" disabled={saving.value} onClick={share}>
+      Share as Markdown…
+    </button>
+  );
+}
+
 function SelectionBar() {
   const target = useSignal("");
   const n = selected.value.size;

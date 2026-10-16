@@ -339,7 +339,8 @@ kbd {
   overflow-wrap: anywhere;
 }
 .feed-count { font: 12px var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.feed-head .edit { margin-inline-start: auto; align-self: center; }
+.feed-head .edit, .feed-head .share { align-self: center; }
+.feed-head .share { margin-inline-start: auto; }
 
 /* ---- Collection editor ---- */
 

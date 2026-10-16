@@ -334,6 +334,13 @@ export const Library = {
   settings(): Promise<Settings> {
     return call("Library.Settings");
   },
+  /**
+   * ShareCollection asks where to save one collection as a Markdown file and
+   * writes it there. It returns the file's path, or "" when cancelled.
+   */
+  shareCollection(id: number): Promise<string> {
+    return call("Library.ShareCollection", id);
+  },
   /** Stats counts bookmarks and describes the last sync. */
   stats(): Promise<Stats> {
     return call("Library.Stats");

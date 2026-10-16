@@ -55,3 +55,31 @@ func TestWrite(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestCollection(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	tw := xparse.Tweet{ID: "1", URL: "https://x.com/ada/status/1", AuthorHandle: "ada", AuthorName: "Ada", Text: "Engines &amp; looms", CreatedAt: now,
+		Media: []xparse.Media{{Kind: "photo", Thumb: "https://pbs.twimg.com/a.jpg"}}, Raw: []byte("{}")}
+	s.Ingest([]xparse.Entry{{SortIndex: 1, Tweet: tw}}, now)
+	c, _ := s.CreateCollection("Reading", 10, "", now)
+	s.SetInCollection("1", c.ID, true, now)
+	s.SetNote("1", "for the essay")
+	h, _ := s.AddHighlight("1", "", "Engines", now)
+	s.SetHighlightNote(h.ID, "the hook")
+
+	res, _ := s.List(store.Query{Collection: c.ID})
+	var md strings.Builder
+	if err := Collection(&md, c, res.Items, s.Highlights); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"# Reading\n\n1 post from X, kept in roost.", "**Ada** ([@ada](https://x.com/ada))", "Engines & looms", "![](https://pbs.twimg.com/a.jpg?name=small)", "*Note:* for the essay", "> Engines\n\nthe hook", "[View on X](https://x.com/ada/status/1)"} {
+		if !strings.Contains(md.String(), want) {
+			t.Errorf("collection lacks %q:\n%s", want, md.String())
+		}
+	}
+}

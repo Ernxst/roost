@@ -7,8 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -484,6 +487,47 @@ func (l *Library) Export(choose bool) (export.Result, error) {
 	}
 	settings.ExportDir = dir
 	return res, s.SaveSettings(settings)
+}
+
+// ShareCollection asks where to save one collection as a Markdown file and
+// writes it there. It returns the file's path, or "" when cancelled.
+func (l *Library) ShareCollection(id int64) (string, error) {
+	s, err := l.store()
+	if err != nil {
+		return "", err
+	}
+	cols, err := s.Collections()
+	if err != nil {
+		return "", err
+	}
+	i := slices.IndexFunc(cols, func(c store.Collection) bool { return c.ID == id })
+	if i < 0 {
+		return "", fmt.Errorf("no collection %d", id)
+	}
+	c := cols[i]
+	res, err := s.List(store.Query{Collection: id, Limit: math.MaxInt32})
+	if err != nil {
+		return "", err
+	}
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{
+		Parent:      l.main,
+		Title:       "Share " + c.Name,
+		ButtonLabel: "Save",
+		DefaultPath: strings.ReplaceAll(c.Name, "/", "-") + ".md",
+		Filters:     []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md"}}},
+	})
+	if err != nil || path == "" {
+		return "", err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return "", err
+	}
+	if err := export.Collection(f, c, res.Items, s.Highlights); err != nil {
+		f.Close()
+		return "", err
+	}
+	return path, f.Close()
 }
 
 // Reveal shows a file or folder in Finder.
