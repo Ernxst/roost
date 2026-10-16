@@ -33,6 +33,7 @@ import { Card, ink } from "./card";
 import { RevisitView } from "./revisit";
 import { SettingsButton } from "./settings";
 import { SortMode } from "./sort";
+import { SuggestedChips, useSuggestions } from "./suggest";
 import { Thread } from "./thread";
 import { Links, Reader } from "./links";
 import { HighlightList, Highlighter, HighlightsView, usePostHighlights } from "./highlights";
@@ -521,6 +522,7 @@ function Sheet() {
   const note = useSignal("");
   const reading = useSignal<string | null>(null);
   const hl = usePostHighlights(b);
+  const suggested = useSuggestions(b);
 
   useSignalEffect(() => {
     const o = opened.value;
@@ -592,6 +594,7 @@ function Sheet() {
 
       <fieldset class="file-under">
         <legend>File under</legend>
+        <SuggestedChips ids={suggested.value} onFile={(id) => toggleCollection(b, id)} />
         {manual().length === 0 && <p class="hint">Make a collection in the sidebar to file posts.</p>}
         {manual().map((c, i) => (
           <label key={c.id} class="check" style={{ "--hue": ink(c.hue) }}>

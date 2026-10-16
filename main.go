@@ -371,6 +371,15 @@ func (l *Library) Highlights(tweetID string) ([]store.Highlight, error) {
 	return s.Highlights(tweetID)
 }
 
+// Suggest ranks the collections a post might belong in.
+func (l *Library) Suggest(tweetID string) ([]store.Suggestion, error) {
+	s, err := l.store()
+	if err != nil {
+		return nil, err
+	}
+	return s.Suggest(tweetID, 3)
+}
+
 // Get returns one bookmark.
 func (l *Library) Get(tweetID string) (store.Bookmark, error) {
 	s, err := l.store()

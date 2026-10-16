@@ -125,6 +125,11 @@ export interface Stats {
   lastSync: Sync | null;
 }
 
+export interface Suggestion {
+  collectionId: number;
+  score: number;
+}
+
 export interface Sync {
   full: boolean;
   startedAt: string;
@@ -258,6 +263,10 @@ export const Library = {
   /** Stats counts bookmarks and describes the last sync. */
   stats(): Promise<Stats> {
     return call("Library.Stats");
+  },
+  /** Suggest ranks the collections a post might belong in. */
+  suggest(tweetID: string): Promise<Suggestion[]> {
+    return call("Library.Suggest", tweetID);
   },
   /**
    * Sync starts bringing the library up to date with X and returns at once;

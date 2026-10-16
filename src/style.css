@@ -832,3 +832,19 @@ mark { background: color-mix(in oklch, oklch(0.88 0.15 95) 70%, transparent); co
 }
 .clip-source time { color: var(--ink-3); }
 @media (hover: hover) { .clip-source:hover span { text-decoration: underline; } }
+
+/* ---- Suggestions ---- */
+
+.suggested { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+.suggested-label { font: 10.5px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin-right: 2px; }
+.suggestion {
+  padding: 3px 9px;
+  border: 1px dashed var(--hue);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font-size: 13.5px;
+}
+@media (hover: hover) { .suggestion:hover { background: color-mix(in oklch, var(--hue) 14%, transparent); border-style: solid; } }
+.bin[data-suggested] { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--hue) 45%, transparent); }
+.bin-hint { flex: none !important; font: 10px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }

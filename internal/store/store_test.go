@@ -363,3 +363,36 @@ func TestHighlights(t *testing.T) {
 		t.Errorf("after delete = %+v", hs)
 	}
 }
+
+func TestSuggest(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	s.Ingest([]xparse.Entry{
+		entry("1", 10, "webgpu compute shaders on the gpu", false),
+		entry("2", 20, "writing fragment shaders for the gpu", false),
+		entry("3", 30, "sourdough bread hydration", false),
+		entry("4", 40, "a new gpu shaders tutorial", false),
+	}, now)
+	gpu, _ := s.CreateCollection("GPU", 10, "", now)
+	baking, _ := s.CreateCollection("Baking", 20, "", now)
+	s.SetInCollection("1", gpu.ID, true, now)
+	s.SetInCollection("2", gpu.ID, true, now)
+	s.SetInCollection("3", baking.ID, true, now)
+
+	got, err := s.Suggest("4", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) == 0 || got[0].CollectionID != gpu.ID {
+		t.Fatalf("suggestions = %+v, want GPU first", got)
+	}
+	if got, _ := s.Suggest("1", 3); len(got) != 1 || got[0].CollectionID != baking.ID {
+		// Post 1 is by the same author as the baking post, so Baking comes
+		// up on author affinity alone; GPU is left out because post 1 is in it.
+		t.Errorf("suggestions for a filed post = %+v", got)
+	}
+}

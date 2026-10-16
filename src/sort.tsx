@@ -3,6 +3,7 @@ import { useEffect } from "preact/hooks";
 import { ink, Stamps } from "./card";
 import { Library, type Bookmark } from "./mygo";
 import { announce, createCollection, file, items, loading, manual, opened, reload, setAside, stats, total } from "./state";
+import { useSuggestions } from "./suggest";
 import { Avatar, MediaGrid, openExternal, Quoted, shortDate, Text } from "./tweet";
 
 type Action = { b: Bookmark; kind: "file"; collection: number } | { b: Bookmark; kind: "aside" | "skip" };
@@ -19,6 +20,7 @@ export function SortMode() {
   const name = useSignal("");
   const queue = useComputed(() => items.value.filter((b) => !done.value.has(b.tweet.id)));
   const current = queue.value[0];
+  const suggested = useSuggestions(current);
 
   // Filed posts leave the unsorted list, so a fresh first page is the next batch.
   useEffect(() => {
@@ -135,10 +137,12 @@ export function SortMode() {
                     class="bin"
                     style={{ "--hue": ink(c.hue) }}
                     aria-pressed={current.collections.includes(c.id)}
+                    data-suggested={suggested.value.includes(c.id) || undefined}
                     onClick={(e) => fileInto(i, e.shiftKey)}
                   >
                     {i < 9 && <kbd>{i + 1}</kbd>}
                     <span>{c.name}</span>
+                    {suggested.value[0] === c.id && <span class="bin-hint">likely</span>}
                   </button>
                 </li>
               ))}
