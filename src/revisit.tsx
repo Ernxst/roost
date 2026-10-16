@@ -15,6 +15,7 @@ export function RevisitView() {
         <p class="empty">…</p>
       ) : (
         <>
+          {r.onThisDay.length + r.unopened.length + r.random.length === 0 && <p class="empty">Sync to read your bookmarks from X.</p>}
           <Shelf title="On this day" note="posted on this date in earlier years" items={r.onThisDay} />
           <Shelf title="Never opened" note="kept, then never looked at in roost" items={r.unopened} />
           <Shelf

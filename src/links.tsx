@@ -33,13 +33,24 @@ export function Links({ b, onRead }: { b: Bookmark; onRead: (url: string) => voi
                 Read the saved copy
               </button>
             ) : (
-              <span class="link-status">{l.page ? `Not saved: ${l.page.error}` : "Not fetched yet"}</span>
+              <div class="link-status">
+                {l.page ? <>{linkError(l.page.error ?? "")}{l.page.error && <details><summary>Details</summary><code>{l.page.error}</code></details>}</> : "Not fetched yet"}
+              </div>
             )}
           </li>
         ))}
       </ul>
     </section>
   );
+}
+
+function linkError(error: string) {
+  if (!error) return "Not saved: page text could not be read.";
+  if (/tls|certificate|handshake/i.test(error)) return "Not saved: the site’s secure connection failed.";
+  if (/timeout|deadline/i.test(error)) return "Not saved: the site took too long to respond.";
+  if (/lookup|dial tcp|connection refused|network/i.test(error)) return "Not saved: the site could not be reached.";
+  if (/sign.?in|login|unauthori[sz]ed|forbidden/i.test(error)) return "Not saved: the page may require signing in.";
+  return "Not saved: the page could not be read.";
 }
 
 /** A saved page as plain text, set for reading. */

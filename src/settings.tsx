@@ -4,7 +4,7 @@ import { Library, type MediaUsage, type Result, type Settings } from "./mygo";
 import { announce, count, errorText, fail, syncing, startSync } from "./state";
 
 const size = (bytes: number) =>
-  bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : bytes < 1e9 ? `${(bytes / 1e6).toFixed(0)} MB` : `${(bytes / 1e9).toFixed(1)} GB`;
+  bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : bytes < 1e9 ? `${(bytes / 1e6).toFixed(0)} MB` : bytes < 1e12 ? `${(bytes / 1e9).toFixed(1)} GB` : `${(bytes / 1e12).toFixed(1)} TB`;
 
 const syncChoices: [number, string][] = [
   [0, "Only when I ask"],
@@ -145,7 +145,7 @@ export function SettingsButton() {
                 <h3>Offline media</h3>
                 <p class="hint">
                   roost keeps a copy of every image, so posts still look right offline or after X takes them down.
-                  {usage.value && ` ${usage.value.files.toLocaleString()} files, ${size(usage.value.bytes)}, are on this Mac.`}
+                  {usage.value && ` ${count(usage.value.files, "file")}, ${size(usage.value.bytes)}, are on this Mac.`}
                 </p>
                 <label class="check">
                   <input type="checkbox" checked={s.cacheVideos} disabled={saving.value} onChange={(e) => change({ cacheVideos: e.currentTarget.checked })} />

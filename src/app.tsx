@@ -248,6 +248,7 @@ function Rail({ inert }: { inert: boolean }) {
             New collection
           </label>
           <input
+            maxLength={80}
             id="new-collection"
             value={name.value}
             onInput={(e) => (name.value = e.currentTarget.value)}
@@ -340,12 +341,22 @@ function SyncNotice() {
   if (!p || !p.message || (!failed && p.phase !== "done") || dismissedSyncNotice.value === p) return null;
   return (
     <div class={failed ? "sync-notice failed" : "sync-notice"} role={failed ? "alert" : "status"}>
-      <p>{failed ? `Sync failed: ${p.message}` : p.message}</p>
+      <p>{failed ? syncFailure(p.message) : p.message}</p>
+      {failed && <details><summary>Technical details</summary><code>{p.message}</code></details>}
+      {failed && <button class="press quiet" onClick={() => startSync(p.full)}>Try again</button>}
       <button class="press quiet" onClick={() => (dismissedSyncNotice.value = p)}>
         Dismiss
       </button>
     </div>
   );
+}
+
+function syncFailure(message: string) {
+  if (/tls|certificate|handshake/i.test(message)) return "Sync failed because X’s secure connection could not be verified.";
+  if (/timeout|deadline/i.test(message)) return "Sync failed because X took too long to respond.";
+  if (/lookup|dial tcp|connection refused|network/i.test(message)) return "Sync failed because roost could not reach X.";
+  if (/sign.?in|login|unauthori[sz]ed|forbidden|cookie/i.test(message)) return "Sync failed because X needs you to sign in again.";
+  return "Sync failed. Try again or check your connection and sign-in.";
 }
 
 function Toolbar() {
@@ -800,7 +811,7 @@ function Sheet({ lastFocused }: { lastFocused: { current: HTMLElement | null } }
     );
   }
   return (
-    <div class="sheet" ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Post by ${t.authorName}`}>
+    <div class="sheet" ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Post by ${t.authorName || `@${t.authorHandle}`}`}>
       <div class="sheet-head">
         <span class="sheet-kicker">Kept post</span>
         <button class="close" onClick={() => (opened.value = null)} aria-label="Close">
@@ -808,7 +819,7 @@ function Sheet({ lastFocused }: { lastFocused: { current: HTMLElement | null } }
         </button>
       </div>
       <div class="byline big">
-        <Avatar src={t.authorAvatar} name={t.authorName} size={40} />
+        <Avatar src={t.authorAvatar} name={t.authorName || t.authorHandle} size={40} />
         <h2 class="who">
           <button
             class="author-link"
@@ -847,6 +858,7 @@ function Sheet({ lastFocused }: { lastFocused: { current: HTMLElement | null } }
         <span class="legend">Field note</span>
         <textarea
           id="note"
+          maxLength={2000}
           dir="auto"
           rows={4}
           value={note.value}

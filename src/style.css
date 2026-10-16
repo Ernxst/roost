@@ -316,6 +316,7 @@ kbd {
   top: calc(100% + 8px);
   inset-inline: 28px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
   padding: 10px 12px 10px 16px;
@@ -326,6 +327,8 @@ kbd {
   color: var(--ink-2);
 }
 .sync-notice p { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.sync-notice details { flex: 1 1 100%; min-width: 0; }
+.sync-notice code, .link-status code { overflow-wrap: anywhere; white-space: pre-wrap; }
 .sync-notice.failed { color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 8px 24px color-mix(in oklab, var(--ink) 14%, transparent); }
 .sync-notice .press { flex: none; min-height: 28px; padding: 4px 10px; font-size: 13px; }
 .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }

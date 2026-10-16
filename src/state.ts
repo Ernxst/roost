@@ -350,9 +350,14 @@ export async function startSync(full: boolean) {
     progress.value = { phase: "loading", full, seen: 0, added: 0, removed: 0, message: "" };
     await Library.sync(full);
   } catch (err) {
-    progress.value = null;
-    fail(err);
+    progress.value = { phase: "failed", full, seen: 0, added: 0, removed: 0, message: errorText(err) };
+    announceLive("Sync failed");
   }
+}
+
+function announceLive(text: string) {
+  announcement.value = "";
+  requestAnimationFrame(() => (announcement.value = text));
 }
 
 let syncRefresh: ReturnType<typeof setTimeout> | undefined;
@@ -366,7 +371,9 @@ events.syncProgress.on((p) => {
     clearTimeout(syncRefresh);
     reload();
     refreshMeta();
-    if (p.phase === "failed") announce(`Sync failed: ${p.message}`, true, { label: "Try again", run: () => startSync(p.full) });
+    if (p.phase === "failed") {
+      announceLive("Sync failed");
+    }
     else {
       const parts = [`${p.added} new`];
       if (p.removed) parts.push(`${p.removed} missing from bookmarks`);
