@@ -6,6 +6,8 @@ read their threads and linked pages, and still have them after they vanish
 from X. It needs no X Premium and no API key: it reads your bookmarks
 through X's own website while you're signed in.
 
+![roost's feed: kept posts in three columns, with collections, rituals and the most-kept authors in the sidebar](design/screenshot.png)
+
 ## Install
 
 1. Download the latest `roost … .dmg` from
@@ -35,6 +37,11 @@ bun run dev     # the development app, rebuilt as files change
 go test ./...
 bun run build   # a universal app and disk image in build/
 ```
+
+`bun run dev:web` serves the interface alone at http://localhost:5287. Add
+`?data=sample` for a made-up library, the one in the screenshot above, or
+`?data=worst`, `empty`, `one` or `thousand` to test long names, empty views
+and large libraries. A switch at the foot of the page moves between them.
 
 ## Release
 
