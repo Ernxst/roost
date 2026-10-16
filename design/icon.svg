@@ -1,53 +1,71 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fbf7ee"/>
-      <stop offset="1" stop-color="#ebe1cc"/>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b2a1d"/>
+      <stop offset="1" stop-color="#1a120c"/>
     </linearGradient>
-    <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#a92e12"/>
-      <stop offset="0.45" stop-color="#cf4422"/>
-      <stop offset="1" stop-color="#b8391a"/>
+    <radialGradient id="lamp" cx="0.5" cy="0.28" r="0.62">
+      <stop offset="0" stop-color="#ffb867" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#ffb867" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="paper-front" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset="1" stop-color="#efe5cf"/>
     </linearGradient>
-    <linearGradient id="breast" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f28c40"/>
-      <stop offset="1" stop-color="#de6629"/>
+    <linearGradient id="paper-middle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbf5e7"/>
+      <stop offset="1" stop-color="#e9dec5"/>
     </linearGradient>
-    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%">
-      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#2a1f10" flood-opacity="0.26"/>
+    <linearGradient id="paper-back" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6eedc"/>
+      <stop offset="1" stop-color="#e2d5b9"/>
+    </linearGradient>
+    <linearGradient id="vermilion" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e4532c"/>
+      <stop offset="1" stop-color="#b93106"/>
+    </linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7a5436"/>
+      <stop offset="1" stop-color="#4f3420"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6dc98"/>
+      <stop offset="0.5" stop-color="#d2a24a"/>
+      <stop offset="1" stop-color="#94661f"/>
+    </linearGradient>
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity="0.3"/>
     </filter>
-    <filter id="soft" x="-30%" y="-20%" width="160%" height="150%">
-      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#5a3a1a" flood-opacity="0.25"/>
+    <filter id="drawer-shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="26" stdDeviation="24" flood-color="#000" flood-opacity="0.5"/>
     </filter>
-    <g id="robin">
-      <path d="M440 488 L292 578 Q280 598 302 598 L462 548 Z"/>
-      <ellipse cx="518" cy="482" rx="124" ry="90" transform="rotate(-16 518 482)"/>
-      <circle cx="612" cy="392" r="66"/>
-    </g>
-    <!-- a clip path can't use a group, so it repeats the robin's shapes -->
-    <clipPath id="bird">
-      <path d="M440 488 L292 578 Q280 598 302 598 L462 548 Z"/>
-      <ellipse cx="518" cy="482" rx="124" ry="90" transform="rotate(-16 518 482)"/>
-      <circle cx="612" cy="392" r="66"/>
-    </clipPath>
+    <!-- each card casts a soft shadow up onto the card behind it -->
+    <filter id="lift" x="-10%" y="-40%" width="120%" height="160%">
+      <feDropShadow dx="0" dy="-6" stdDeviation="8" flood-color="#3a2410" flood-opacity="0.28"/>
+    </filter>
+    <clipPath id="card"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+    <clipPath id="above-back-card"><rect width="1024" height="329"/></clipPath>
+    <path id="back-card" d="M252 680 V352 Q252 330 274 330 H546 Q560 330 564 316 L572 242 Q576 226 592 226 H692 Q708 226 712 242 L720 316 Q724 330 738 330 H750 Q772 330 772 352 V680 Z"/>
   </defs>
 
   <!-- the card -->
-  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#paper)" filter="url(#drop)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#000" filter="url(#card-shadow)"/>
+  <g clip-path="url(#card)">
+    <rect width="1024" height="1024" fill="url(#ink)"/>
+    <rect width="1024" height="1024" fill="url(#lamp)"/>
 
-  <!-- the bookmark centred on the card, the robin perched on top -->
-  <g transform="translate(512 512) scale(1.1) translate(-522 -588)">
-    <path d="M424 588 H620 V862 L522 806 L424 862 Z" fill="url(#ribbon)" filter="url(#soft)"/>
-
-    <g stroke="#1d1a14" stroke-width="14" stroke-linecap="round">
-      <line x1="500" y1="560" x2="494" y2="590"/>
-      <line x1="546" y1="556" x2="552" y2="590"/>
+    <!-- a catalogue drawer of index cards; the back card's tab is the bookmark -->
+    <g filter="url(#drawer-shadow)">
+      <path d="M226 660 L244 430 H780 L798 660 Z" fill="#241910"/>
+      <use href="#back-card" fill="url(#paper-back)"/>
+      <use href="#back-card" fill="url(#vermilion)" clip-path="url(#above-back-card)"/>
+      <path d="M252 680 V420 Q252 398 274 398 H286 Q300 398 304 384 L312 352 Q316 336 332 336 H424 Q440 336 444 352 L452 384 Q456 398 470 398 H750 Q772 398 772 420 V680 Z" fill="url(#paper-middle)" filter="url(#lift)"/>
+      <path d="M252 680 V484 Q252 462 274 462 H750 Q772 462 772 484 V680 Z" fill="url(#paper-front)" filter="url(#lift)"/>
+      <rect x="212" y="632" width="600" height="180" rx="32" fill="url(#wood)" filter="url(#lift)"/>
     </g>
-    <use href="#robin" fill="#1d1a14"/>
-    <g clip-path="url(#bird)">
-      <ellipse cx="634" cy="512" rx="94" ry="114" fill="url(#breast)"/>
-    </g>
-    <path d="M670 380 L730 402 L668 422 Z" fill="#e9a53a"/>
-    <circle cx="626" cy="372" r="12" fill="#fbf7ee"/>
+    <rect x="212" y="632" width="600" height="180" rx="32" fill="none" stroke="#ffe9c2" stroke-opacity="0.16" stroke-width="4"/>
+    <rect x="424" y="680" width="176" height="84" rx="14" fill="url(#brass)"/>
+    <rect x="440" y="696" width="144" height="52" rx="5" fill="#fbf6ea"/>
   </g>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="none" stroke="#fff" stroke-opacity="0.12" stroke-width="4"/>
 </svg>
