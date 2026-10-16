@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { useRef } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { Library, type MediaUsage, type Result, type Settings } from "./mygo";
 import { announce, count, fail } from "./state";
 
@@ -48,6 +48,18 @@ export function SettingsButton() {
     }
   }
 
+  // ⌘, opens settings, as in every Mac app.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey && e.key === "," && !dialog.current?.open) {
+        e.preventDefault();
+        open();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   async function change(patch: Partial<Settings>) {
     if (!settings.value) return;
     const next = { ...settings.value, ...patch };
@@ -62,7 +74,7 @@ export function SettingsButton() {
   const s = settings.value;
   return (
     <>
-      <button class="add settings-button" onClick={open}>
+      <button class="add settings-button" onClick={open} aria-keyshortcuts="Meta+,">
         Settings
       </button>
       <dialog class="settings" ref={dialog} aria-labelledby="settings-title" onClick={(e) => e.target === dialog.current && dialog.current?.close()}>

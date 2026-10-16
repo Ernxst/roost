@@ -32,6 +32,16 @@ const SORT: Key[] = [
 
 const READING: Key[] = [[<kbd>h</kbd>, "Highlight the selected text"]];
 
+const APP: Key[] = [
+  [
+    <>
+      <kbd>⌘</kbd> <kbd>,</kbd>
+    </>,
+    "Settings",
+  ],
+  [<kbd>?</kbd>, "These keys"],
+];
+
 function List({ title, keys }: { title: string; keys: Key[] }) {
   return (
     <section class="keys-group">
@@ -88,6 +98,7 @@ export function Keys() {
           )}
           <List title="Sorting" keys={SORT} />
           <List title="Reading" keys={READING} />
+          <List title="Anywhere" keys={APP} />
         </div>
       </dialog>
     </>
