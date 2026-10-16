@@ -276,7 +276,13 @@ function SyncStatus() {
     );
   }
   if (p?.phase === "login") return <span class="ticker live">Sign in to X in the window that opened</span>;
-  if (p?.phase === "failed") return <span class="ticker failed">Sync failed: {p.message}</span>;
+  if (p?.phase === "failed") {
+    return (
+      <span class="ticker failed" title={p.message}>
+        Sync failed: {p.message}
+      </span>
+    );
+  }
   if (!last) return <span class="ticker">Never synced</span>;
   return (
     <span class="ticker" title={longDate(last.finishedAt)}>

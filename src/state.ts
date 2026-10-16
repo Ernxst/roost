@@ -362,7 +362,7 @@ events.syncProgress.on((p) => {
     clearTimeout(syncRefresh);
     reload();
     refreshMeta();
-    if (p.phase === "failed") announce(`Sync failed: ${p.message}`);
+    if (p.phase === "failed") announce(`Sync failed: ${p.message}`, true);
     else {
       const parts = [`${p.added} new`];
       if (p.removed) parts.push(`${p.removed} removed on X`);
