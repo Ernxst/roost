@@ -31,9 +31,12 @@ export function Thread({ b }: { b: Bookmark }) {
   const list = posts.value;
   if (!list || list.length < 2) {
     return (
-      <button class="add" onClick={look} disabled={busy.value}>
-        {busy.value ? "Reading X…" : list ? "No thread found" : "Look for a thread"}
-      </button>
+      <p class="thread-look">
+        {list && !busy.value && <span class="link-status">This post stands alone.</span>}
+        <button class="add" onClick={look} disabled={busy.value}>
+          {busy.value ? "Reading X…" : list ? "Look again" : "Look for a thread"}
+        </button>
+      </p>
     );
   }
   return (
