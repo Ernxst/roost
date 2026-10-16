@@ -49,7 +49,10 @@ export function Thread({ b }: { b: Bookmark }) {
               {t.text && <Text tweet={t} />}
               <MediaGrid media={t.media} />
               {t.quoted && <Quoted tweet={t.quoted} />}
-              <time dateTime={t.createdAt}>{shortDate(t.createdAt)}</time>
+              <p class="thread-when">
+                <time dateTime={t.createdAt}>{shortDate(t.createdAt)}</time>
+                {t.id === b.tweet.id && <span class="thread-kept"> · the one you kept</span>}
+              </p>
             </div>
           </li>
         ))}

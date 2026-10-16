@@ -72,6 +72,11 @@ function Tile({ b, m }: { b: Bookmark; m: Media }) {
       <span class="tile-caption">
         <span class="sr-only">{m.kind === "photo" ? "Photo" : m.kind === "video" ? "Video" : "GIF"} from </span>@{t.authorHandle}
       </span>
+      {b.removedAt && (
+        <span class="tile-gone">
+          <span class="sr-only">, </span>gone from X
+        </span>
+      )}
     </button>
   );
 }

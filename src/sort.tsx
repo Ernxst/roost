@@ -151,6 +151,11 @@ export function SortMode() {
                     {i < 9 && <kbd>{i + 1}</kbd>}
                     <span>{c.name}</span>
                     {suggested.value[0] === c.id && <span class="bin-hint">likely</span>}
+                    {current.collections.includes(c.id) && (
+                      <span class="bin-check" aria-hidden="true">
+                        ✓
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}
