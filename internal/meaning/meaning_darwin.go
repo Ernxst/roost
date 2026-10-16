@@ -3,6 +3,7 @@ package meaning
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"sync"
 	"unsafe"
 
@@ -36,8 +37,8 @@ func New() (*Model, error) {
 	if _, err := purego.Dlopen("/System/Library/Frameworks/NaturalLanguage.framework/NaturalLanguage", purego.RTLD_GLOBAL|purego.RTLD_NOW); err != nil {
 		return nil, err
 	}
-	pool := objc.ID(objc.GetClass("NSAutoreleasePool")).Send(selAlloc).Send(selInit)
-	defer pool.Send(selDrain)
+	pool := newPool()
+	defer pool.drain()
 	lang := nsString("en")
 	defer lang.Send(selRelease)
 	e := objc.ID(objc.GetClass("NLEmbedding")).Send(selEmbedding, lang)
@@ -60,13 +61,28 @@ func (m *Model) Name() string { return m.name }
 func (m *Model) Vector(text string) ([]float32, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	pool := objc.ID(objc.GetClass("NSAutoreleasePool")).Send(selAlloc).Send(selInit)
-	defer pool.Send(selDrain)
+	pool := newPool()
+	defer pool.drain()
 	s := nsString(text)
 	defer s.Send(selRelease)
 	v := make([]float32, m.dimension)
 	ok := objc.Send[bool](m.embedding, selGetVector, unsafe.Pointer(&v[0]), s)
 	return v, ok
+}
+
+// pool is an autorelease pool. Cocoa drains a pool on the thread that made
+// it, so the goroutine stays on its OS thread until drain; without that the
+// Go scheduler can move it mid-call and draining corrupts both threads' pools.
+type pool objc.ID
+
+func newPool() pool {
+	runtime.LockOSThread()
+	return pool(objc.ID(objc.GetClass("NSAutoreleasePool")).Send(selAlloc).Send(selInit))
+}
+
+func (p pool) drain() {
+	objc.ID(p).Send(selDrain)
+	runtime.UnlockOSThread()
 }
 
 // nsString makes an NSString the caller must release.
