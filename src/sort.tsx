@@ -206,7 +206,7 @@ function SortCard({ b }: { b: Bookmark }) {
       <header class="byline">
         <Avatar src={t.authorAvatar} size={36} />
         <span class="who" id={`sort-${t.id}`}>
-          <span class="name">{t.authorName}</span>
+          <span class="name" dir="auto">{t.authorName}</span>
           <span class="handle">@{t.authorHandle}</span>
         </span>
         <time dateTime={t.createdAt}>{shortDate(t.createdAt)}</time>

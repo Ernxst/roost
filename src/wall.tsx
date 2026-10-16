@@ -109,7 +109,7 @@ export function DuplicatesView() {
                     <button class="dupe-row" onClick={() => openPost(b.tweet.id)}>
                       <Avatar src={b.tweet.authorAvatar} size={22} />
                       <span class="dupe-text">
-                        <span class="name">{b.tweet.authorName}</span> {b.tweet.text.replace(/https?:\/\/\S+/g, "").trim() || "(no text)"}
+                        <span class="name" dir="auto">{b.tweet.authorName}</span> {b.tweet.text.replace(/https?:\/\/\S+/g, "").trim() || "(no text)"}
                       </span>
                       <time dateTime={b.tweet.createdAt}>{shortDate(b.tweet.createdAt)}</time>
                     </button>

@@ -610,7 +610,7 @@ function Sheet() {
       <div class="byline big">
         <Avatar src={t.authorAvatar} size={40} />
         <h2 class="who">
-          <span class="name">{t.authorName}</span>
+          <span class="name" dir="auto">{t.authorName}</span>
           <span class="handle">@{t.authorHandle}</span>
         </h2>
       </div>
@@ -665,6 +665,7 @@ function Sheet() {
         <span class="legend">Field note</span>
         <textarea
           id="note"
+          dir="auto"
           rows={4}
           value={note.value}
           disabled={isFixtureMode}

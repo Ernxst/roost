@@ -54,7 +54,7 @@ function CardBody({ b }: { b: Bookmark }) {
       <header class="byline">
         <Avatar src={t.authorAvatar} />
         <span class="who" id={`by-${t.id}`}>
-          <span class="name">{t.authorName}</span>
+          <span class="name" dir="auto">{t.authorName}</span>
           <span class="handle">@{t.authorHandle}</span>
         </span>
         <time dateTime={t.createdAt}>{shortDate(t.createdAt)}</time>
@@ -66,7 +66,7 @@ function CardBody({ b }: { b: Bookmark }) {
       {t.text && <Text tweet={t} />}
       <MediaGrid media={t.media} />
       {t.quoted && <Quoted tweet={t.quoted} />}
-      {b.note && <p class="note-preview">{b.note}</p>}
+      {b.note && <p class="note-preview" dir="auto">{b.note}</p>}
       <Stamps b={b} />
       {b.removedAt && (
         <span class="gone-stamp">gone from X</span>

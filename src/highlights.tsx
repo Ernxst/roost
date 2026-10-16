@@ -115,7 +115,7 @@ export function HighlightList({ list, onDelete }: { list: Highlight[]; onDelete:
       <ul>
         {list.map((h) => (
           <li key={h.id}>
-            <blockquote>{h.quote}</blockquote>
+            <blockquote dir="auto">{h.quote}</blockquote>
             {h.source && <span class="link-status">from {new URL(h.source).hostname.replace(/^www\./, "")}</span>}
             <button class="close" aria-label="Remove highlight" onClick={() => onDelete(h.id)}>
               ✕
@@ -144,7 +144,7 @@ export function HighlightsView() {
         <ol class="clippings">
           {list.map((h) => (
             <li key={h.id} class="clipping">
-              <blockquote>{h.quote}</blockquote>
+              <blockquote dir="auto">{h.quote}</blockquote>
               <button class="clip-source" onClick={() => openPost(h.tweetId)}>
                 {h.tweet && <Avatar src={h.tweet.authorAvatar} size={18} />}
                 <span>

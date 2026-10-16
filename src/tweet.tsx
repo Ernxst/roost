@@ -40,7 +40,11 @@ export function Text({ tweet }: { tweet: Tweet }) {
     last = (m.index ?? 0) + token.length;
   }
   out.push(text.slice(last));
-  return <p class="text">{out}</p>;
+  return (
+    <p class="text" dir="auto">
+      {out}
+    </p>
+  );
 }
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
@@ -138,7 +142,7 @@ export function Quoted({ tweet }: { tweet: Tweet }) {
     <blockquote class="quoted">
       <div class="byline">
         <Avatar src={tweet.authorAvatar} size={18} />
-        <span class="name">{tweet.authorName}</span>
+        <span class="name" dir="auto">{tweet.authorName}</span>
         <span class="handle">@{tweet.authorHandle}</span>
       </div>
       <Text tweet={tweet} />
