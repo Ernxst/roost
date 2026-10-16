@@ -26,6 +26,9 @@ const KEYS: [string, string][] = [
   ["is:", "gone, opened, unopened or set aside"],
   ["before:", "posted before a date"],
   ["after:", "posted after a date"],
+  ["domain:", "posts linking to a site"],
+  ["lang:", "written in a language"],
+  ["likes:", "at least that many likes"],
 ];
 
 const HAS: [string, string][] = [
