@@ -783,7 +783,8 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
   color: var(--ink-3);
 }
 .hints ul { list-style: none; margin: 0; padding: 0; }
-.hints button {
+.hints button,
+.hints [role="option"] {
   display: flex;
   align-items: baseline;
   gap: 12px;
@@ -795,9 +796,11 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
   background: none;
   text-align: start;
 }
-@media (hover: hover) { .hints button:hover { background: var(--rule); } }
-.hints code { font: 12px var(--mono); color: var(--accent); min-width: 128px; }
-.hints span { font: italic 14px var(--serif); color: var(--ink-2); }
+.hints [role="option"] { cursor: pointer; }
+.hints [aria-selected="true"] { background: var(--rule); }
+@media (hover: hover) { .hints button:hover, .hints [role="option"]:hover { background: var(--rule); } }
+.hints code { font: 12px var(--mono); color: var(--accent); min-width: 128px; overflow-wrap: anywhere; }
+.hints span { font: italic 14px var(--serif); color: var(--ink-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .save-search { position: relative; display: flex; align-items: baseline; gap: 8px; }
 .save-search .field-label { margin: 0; white-space: nowrap; }
