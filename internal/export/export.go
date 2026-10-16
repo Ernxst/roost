@@ -127,6 +127,9 @@ func Write(dir string, src Source, cached func(url string) (string, bool)) (Resu
 				if h.Source != "" {
 					md.WriteString("> — [" + host(h.Source) + "](" + h.Source + ")\n")
 				}
+				if h.Note != "" {
+					md.WriteString("\n" + h.Note + "\n")
+				}
 				md.WriteString("\n")
 			}
 		}

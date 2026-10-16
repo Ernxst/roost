@@ -367,6 +367,15 @@ func (l *Library) DeleteHighlight(id int64) error {
 	return s.DeleteHighlight(id)
 }
 
+// SetHighlightNote keeps what the user wrote about a highlighted passage.
+func (l *Library) SetHighlightNote(id int64, note string) error {
+	s, err := l.store()
+	if err != nil {
+		return err
+	}
+	return s.SetHighlightNote(id, note)
+}
+
 func (l *Library) Highlights(tweetID string) ([]store.Highlight, error) {
 	s, err := l.store()
 	if err != nil {

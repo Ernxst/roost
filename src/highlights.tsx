@@ -3,6 +3,7 @@ import { useEffect, useRef } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { Library, type Bookmark, type Highlight } from "./mygo";
 import { announce, fail, highlights, openPost } from "./state";
+import { isFixtureMode } from "./fixture-mode";
 import { Avatar, shortDate } from "./tweet";
 
 /**
@@ -106,8 +107,62 @@ export function marked(text: string, quotes: string[]): ComponentChildren {
   return out;
 }
 
+/** A note on one highlight, saved when the user pauses or leaves the field. */
+function HighlightNote({ h, onSave }: { h: Highlight; onSave: (id: number, note: string) => void }) {
+  const note = useSignal(h.note);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    note.value = h.note;
+  }, [h.id]);
+  function save() {
+    clearTimeout(timer.current);
+    if (note.value.trim() !== h.note) onSave(h.id, note.value.trim());
+  }
+  return (
+    <>
+      <label for={`hl-note-${h.id}`} class="sr-only">
+        Note on this highlight
+      </label>
+      <textarea
+        id={`hl-note-${h.id}`}
+        class="highlight-note"
+        dir="auto"
+        rows={1}
+        value={note.value}
+        disabled={isFixtureMode}
+        placeholder="Add a note…"
+        onInput={(e) => {
+          note.value = e.currentTarget.value;
+          clearTimeout(timer.current);
+          timer.current = setTimeout(save, 500);
+        }}
+        onBlur={save}
+      />
+    </>
+  );
+}
+
+/** Saves a highlight's note and updates the list it came from. */
+export async function saveHighlightNote(list: { value: Highlight[] }, id: number, note: string) {
+  list.value = list.value.map((h) => (h.id === id ? { ...h, note } : h));
+  try {
+    await Library.setHighlightNote(id, note);
+    announce("Note saved");
+  } catch (err) {
+    fail(err);
+  }
+}
+
 /** A post's highlights, listed in the sheet. */
-export function HighlightList({ list, onDelete }: { list: Highlight[]; onDelete: (id: number) => void }) {
+export function HighlightList({
+  list,
+  onDelete,
+  onNote,
+}: {
+  list: Highlight[];
+  onDelete: (id: number) => void;
+  onNote: (id: number, note: string) => void;
+}) {
   if (list.length === 0) return null;
   return (
     <section class="highlight-list" aria-label="Highlights">
@@ -117,6 +172,7 @@ export function HighlightList({ list, onDelete }: { list: Highlight[]; onDelete:
           <li key={h.id}>
             <blockquote dir="auto">{h.quote}</blockquote>
             {h.source && <span class="link-status">from {new URL(h.source).hostname.replace(/^www\./, "")}</span>}
+            <HighlightNote h={h} onSave={onNote} />
             <button class="close" aria-label="Remove highlight" onClick={() => onDelete(h.id)}>
               ✕
             </button>
@@ -145,6 +201,7 @@ export function HighlightsView() {
           {list.map((h) => (
             <li key={h.id} class="clipping">
               <blockquote dir="auto">{h.quote}</blockquote>
+              <HighlightNote h={h} onSave={(id, note) => saveHighlightNote(highlights, id, note)} />
               <button class="clip-source" onClick={() => openPost(h.tweetId)}>
                 {h.tweet && <Avatar src={h.tweet.authorAvatar} name={h.tweet.authorName} size={18} />}
                 <span>
@@ -180,6 +237,7 @@ export function usePostHighlights(b: Bookmark | undefined) {
   return {
     list,
     add: (h: Highlight) => (list.value = [...list.value, h]),
+    note: (id: number, note: string) => saveHighlightNote(list, id, note),
     remove: async (id: number) => {
       const before = list.value;
       const gone = before.find((h) => h.id === id);

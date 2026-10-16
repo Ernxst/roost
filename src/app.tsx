@@ -677,7 +677,7 @@ function Sheet() {
           placeholder="Why you kept it…"
         />
       </label>
-      {!isFixtureMode && <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} />}
+      {!isFixtureMode && <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} onNote={hl.note} />}
       <p class="meta">
         Posted <time dateTime={t.createdAt}>{longDate(t.createdAt)}</time>
         <br />

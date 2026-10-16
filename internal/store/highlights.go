@@ -16,8 +16,10 @@ type Highlight struct {
 	TweetID string `json:"tweetId"`
 	// Source is the URL of the linked page the passage is from, or empty
 	// for the post itself or its thread.
-	Source    string    `json:"source"`
-	Quote     string    `json:"quote"`
+	Source string `json:"source"`
+	Quote  string `json:"quote"`
+	// Note is what the user wrote about the passage.
+	Note      string    `json:"note"`
 	CreatedAt time.Time `json:"createdAt"`
 	// Tweet is the post the highlight belongs to, filled in by AllHighlights.
 	Tweet *xparse.Tweet `json:"tweet,omitempty"`
@@ -49,6 +51,18 @@ func (s *Store) DeleteHighlight(id int64) error {
 	return s.indexNotes(tweetID)
 }
 
+func (s *Store) SetHighlightNote(id int64, note string) error {
+	var tweetID string
+	err := s.db.QueryRow(`UPDATE highlights SET note = ? WHERE id = ? RETURNING tweet_id`, strings.TrimSpace(note), id).Scan(&tweetID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return errors.New("that highlight no longer exists")
+	}
+	if err != nil {
+		return err
+	}
+	return s.indexNotes(tweetID)
+}
+
 // Highlights returns a post's highlights, oldest first.
 func (s *Store) Highlights(tweetID string) ([]Highlight, error) {
 	return s.highlights(`WHERE h.tweet_id = ? ORDER BY h.created_at`, false, tweetID)
@@ -60,7 +74,7 @@ func (s *Store) AllHighlights() ([]Highlight, error) {
 }
 
 func (s *Store) highlights(tail string, withTweet bool, args ...any) ([]Highlight, error) {
-	rows, err := s.db.Query(`SELECT h.id, h.tweet_id, h.source, h.quote, h.created_at, t.data
+	rows, err := s.db.Query(`SELECT h.id, h.tweet_id, h.source, h.quote, h.note, h.created_at, t.data
 		FROM highlights h JOIN tweets t ON t.id = h.tweet_id `+tail, args...)
 	if err != nil {
 		return nil, err
@@ -71,7 +85,7 @@ func (s *Store) highlights(tail string, withTweet bool, args ...any) ([]Highligh
 		var h Highlight
 		var at int64
 		var data string
-		if err := rows.Scan(&h.ID, &h.TweetID, &h.Source, &h.Quote, &at, &data); err != nil {
+		if err := rows.Scan(&h.ID, &h.TweetID, &h.Source, &h.Quote, &h.Note, &at, &data); err != nil {
 			return nil, err
 		}
 		h.CreatedAt = time.UnixMilli(at)

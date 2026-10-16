@@ -25,7 +25,8 @@ func TestWrite(t *testing.T) {
 	c, _ := s.CreateCollection("Reading", 10, "", now)
 	s.SetInCollection("1", c.ID, true, now)
 	s.SetNote("1", "for the essay")
-	s.AddHighlight("1", "", "Engines", now)
+	h, _ := s.AddHighlight("1", "", "Engines", now)
+	s.SetHighlightNote(h.ID, "the hook")
 
 	img := filepath.Join(t.TempDir(), "abc.jpg")
 	os.WriteFile(img, []byte("jpeg"), 0o644)
@@ -41,7 +42,7 @@ func TestWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`author: "@ada"`, `- "[[Reading]]"`, "Engines & looms: https://example.com/looms", "![[abc.jpg]]", "## Note\n\nfor the essay", "> Engines", "## Links"} {
+	for _, want := range []string{`author: "@ada"`, `- "[[Reading]]"`, "Engines & looms: https://example.com/looms", "![[abc.jpg]]", "## Note\n\nfor the essay", "> Engines\n\nthe hook\n", "## Links"} {
 		if !strings.Contains(string(note), want) {
 			t.Errorf("note lacks %q:\n%s", want, note)
 		}

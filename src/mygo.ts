@@ -48,6 +48,7 @@ export interface Highlight {
   tweetId: string;
   source: string;
   quote: string;
+  note: string;
   createdAt: string;
   tweet?: Tweet;
 }
@@ -296,6 +297,10 @@ export const Library = {
    */
   setAside(tweetID: string, aside: boolean): Promise<void> {
     return call("Library.SetAside", tweetID, aside);
+  },
+  /** SetHighlightNote keeps what the user wrote about a highlighted passage. */
+  setHighlightNote(id: number, note: string): Promise<void> {
+    return call("Library.SetHighlightNote", id, note);
   },
   /** SetInCollection adds a bookmark to a collection or takes it out. */
   setInCollection(tweetID: string, collectionID: number, in_: boolean): Promise<void> {

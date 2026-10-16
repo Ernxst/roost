@@ -105,6 +105,8 @@ CREATE VIRTUAL TABLE notes_fts USING fts5(text, tokenize = 'unicode61 remove_dia
 INSERT INTO notes_fts (rowid, text)
 	SELECT t.rowid, b.note || ' ' || coalesce((SELECT group_concat(h.quote, ' ') FROM highlights h WHERE h.tweet_id = t.id), '')
 	FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id;
+`, `
+ALTER TABLE highlights ADD COLUMN note TEXT NOT NULL DEFAULT '';
 `}
 
 // Open opens the library at path, creating and migrating it as needed.
@@ -576,14 +578,14 @@ func (s *Store) SetNote(tweetID, note string) error {
 	return s.indexNotes(tweetID)
 }
 
-// indexNotes makes the words the user wrote about a post, in its note and
-// highlights, searchable.
+// indexNotes makes the words the user kept about a post searchable: its
+// note, its highlights and their notes.
 func (s *Store) indexNotes(tweetID string) error {
 	if _, err := s.db.Exec(`DELETE FROM notes_fts WHERE rowid = (SELECT rowid FROM tweets WHERE id = ?)`, tweetID); err != nil {
 		return err
 	}
 	_, err := s.db.Exec(`INSERT INTO notes_fts (rowid, text)
-		SELECT t.rowid, b.note || ' ' || coalesce((SELECT group_concat(h.quote, ' ') FROM highlights h WHERE h.tweet_id = t.id), '')
+		SELECT t.rowid, b.note || ' ' || coalesce((SELECT group_concat(h.quote || ' ' || h.note, ' ') FROM highlights h WHERE h.tweet_id = t.id), '')
 		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id WHERE t.id = ?`, tweetID)
 	return err
 }

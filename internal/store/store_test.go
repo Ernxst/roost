@@ -374,6 +374,15 @@ func TestHighlights(t *testing.T) {
 	if hs, _ := s.Highlights("1"); len(hs) != 1 {
 		t.Errorf("after delete = %+v", hs)
 	}
+	if err := s.SetHighlightNote(all[0].ID, " compare with rasterising "); err != nil {
+		t.Fatal(err)
+	}
+	if hs, _ := s.Highlights("1"); len(hs) != 1 || hs[0].Note != "compare with rasterising" {
+		t.Errorf("highlights = %+v", hs)
+	}
+	if got := ids(t, s, Query{Search: "rasteris"}); !equal(got, []string{"1"}) {
+		t.Errorf("search for a word in a highlight's note = %v", got)
+	}
 	s.DeleteHighlight(all[0].ID)
 	if got := ids(t, s, Query{Search: "triangles"}); len(got) != 0 {
 		t.Errorf("search still finds a deleted highlight: %v", got)

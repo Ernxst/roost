@@ -1020,6 +1020,19 @@ mark { background: var(--highlight); color: inherit; padding: 0 1px; border-radi
   font: italic 16px/1.5 var(--serif);
 }
 .highlight-list .close { position: absolute; top: 0; right: 0; }
+.highlight-note {
+  display: block;
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 2px 0 2px 15px;
+  border: 0;
+  background: none;
+  resize: none;
+  field-sizing: content;
+  font: 14px/1.5 var(--serif);
+  color: var(--ink-2);
+}
+.highlight-note::placeholder { font-style: italic; color: var(--ink-3); }
 .highlights-view { padding: 8px 28px 80px; }
 .clippings { list-style: none; margin: 0; padding: 0; columns: 2 340px; column-gap: 28px; }
 .clipping { break-inside: avoid; margin: 0 0 26px; }
