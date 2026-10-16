@@ -159,6 +159,7 @@ function RailItem({
       >
         {hue !== undefined && <span class={smart ? "tab smart" : "tab"} aria-hidden="true" />}
         <span class="label">{label}</span>
+        {smart && <span class="sr-only">, smart collection</span>}
         {count !== undefined && <span class="count">{count.toLocaleString()}</span>}
       </button>
     </li>
