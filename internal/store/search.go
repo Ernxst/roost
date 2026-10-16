@@ -1,10 +1,15 @@
 package store
 
 import (
+	"database/sql/driver"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
+
+	"modernc.org/sqlite"
 )
 
 // A search is plain words, matched as prefixes against the post, its author
@@ -17,6 +22,9 @@ import (
 //	is:gone|opened|unopened|aside   removed on X, opened in roost or not,
 //	                       set aside while sorting
 //	before:2025-01-31, after:2025-01-01   by the date of the post
+//	domain:github.com      posts linking to that site or its subdomains
+//	lang:en                posts X detected as written in that language
+//	likes:1000             posts with at least that many likes when last synced
 //
 // A leading "-" negates a word or a has: operator, and a value with spaces
 // goes in double quotes: in:"reading list".
@@ -105,10 +113,46 @@ func (s *search) operator(key, value string, neg bool) bool {
 		} else {
 			add("t.created_at >= ?", day.AddDate(0, 0, 1).UnixMilli())
 		}
+	case "domain":
+		host := hostname(value)
+		add(`EXISTS (SELECT 1 FROM json_each(t.data, '$.links')
+			WHERE url_host(json_extract(value, '$.expanded')) = ? OR url_host(json_extract(value, '$.expanded')) GLOB '*.' || ?)`, host, host)
+	case "lang":
+		add("json_extract(t.raw, '$.legacy.lang') = ?", strings.ToLower(value))
+	case "likes":
+		n, err := strconv.Atoi(value)
+		if err != nil || n < 0 {
+			return false
+		}
+		add("coalesce(json_extract(t.raw, '$.legacy.favorite_count'), 0) >= ?", n)
 	default:
 		return false
 	}
 	return true
+}
+
+// hostname reads the host from a URL or a bare domain, lower-cased and
+// without a leading www.
+func hostname(s string) string {
+	if !strings.Contains(s, "://") {
+		s = "https://" + s
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
+}
+
+func init() {
+	// url_host(url) is the hostname of a link, as hostname reads it.
+	err := sqlite.RegisterDeterministicScalarFunction("url_host", 1, func(_ *sqlite.FunctionContext, args []driver.Value) (driver.Value, error) {
+		u, _ := args[0].(string)
+		return hostname(u), nil
+	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func mediaKind(kind string) string {

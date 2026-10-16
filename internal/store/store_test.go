@@ -153,9 +153,15 @@ func TestSearchOperators(t *testing.T) {
 		idx, _ := strconv.ParseInt(id, 10, 64)
 		return xparse.Entry{SortIndex: idx, Tweet: xparse.Tweet{ID: id, AuthorHandle: handle, AuthorName: handle, Text: text, CreatedAt: at, Media: media, Raw: []byte("{}")}}
 	}
+	looms := mk("1", "ada", "engines and looms", day(2024, 5, 1))
+	looms.Tweet.Links = []xparse.Link{{Expanded: "https://www.GitHub.com/ada/looms"}}
+	looms.Tweet.Raw = []byte(`{"legacy":{"lang":"en","favorite_count":1200}}`)
+	video := mk("2", "bob", "a video of looms", day(2025, 2, 1), xparse.Media{Kind: "video"})
+	video.Tweet.Links = []xparse.Link{{Expanded: "https://gist.github.com/bob/1"}, {Expanded: "https://notgithub.com/"}}
+	video.Tweet.Raw = []byte(`{"legacy":{"lang":"fr","favorite_count":40}}`)
 	s.Ingest([]xparse.Entry{
-		mk("1", "ada", "engines and looms", day(2024, 5, 1)),
-		mk("2", "bob", "a video of looms", day(2025, 2, 1), xparse.Media{Kind: "video"}),
+		looms,
+		video,
 		mk("3", "ada", "photos of engines", day(2025, 6, 1), xparse.Media{Kind: "photo"}),
 	}, now)
 	reading, _ := s.CreateCollection("Reading list", 10, "", now)
@@ -175,6 +181,14 @@ func TestSearchOperators(t *testing.T) {
 		"before:2025-01-01":                  {"1"},
 		"after:2025-01-31 before:2025-06-30": {"3", "2"},
 		"has:nonsense":                       {},
+		"domain:github.com":                  {"2", "1"},
+		"domain:https://gist.github.com/x":   {"2"},
+		"-domain:gist.github.com":            {"3", "1"},
+		"domain:hub.com":                     {},
+		"lang:EN":                            {"1"},
+		"likes:1000":                         {"1"},
+		"likes:0":                            {"3", "2", "1"},
+		"likes:many":                         {},
 	}
 	for q, want := range cases {
 		if got := ids(t, s, Query{Search: q}); !equal(got, want) {
