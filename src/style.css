@@ -913,7 +913,8 @@ mark { background: color-mix(in oklch, oklch(0.88 0.15 95) 70%, transparent); co
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 8px 0 0 12px;
+  min-height: 28px;
+  margin: 4px 0 0 12px;
   padding: 2px 0;
   border: 0;
   background: none;
