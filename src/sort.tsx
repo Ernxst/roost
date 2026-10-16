@@ -162,8 +162,8 @@ export function SortMode() {
             </ol>
             {naming.value ? (
               <form class="new-collection" onSubmit={createAndFile}>
-                <label for="sort-new" class="sr-only">
-                  New collection name
+                <label for="sort-new" class="field-label">
+                  New collection
                 </label>
                 <input
                   id="sort-new"

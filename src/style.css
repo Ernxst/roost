@@ -194,6 +194,14 @@ kbd {
 @media (hover: hover) { .add:hover { color: var(--ink); background: var(--rule); } }
 
 .new-collection { margin: 4px 0 0; }
+.field-label {
+  display: block;
+  margin: 8px 8px 6px;
+  font: 500 10.5px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-2);
+}
 .new-collection input {
   width: 100%;
   padding: 6px 8px;
@@ -702,6 +710,9 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 .hints code { font: 12px var(--mono); color: var(--accent); min-width: 128px; }
 .hints span { font: italic 14px var(--serif); color: var(--ink-2); }
 
+.save-search { position: relative; display: flex; align-items: baseline; gap: 8px; }
+.save-search .field-label { margin: 0; white-space: nowrap; }
+.save-search .field-error { position: absolute; top: calc(100% + 4px); left: 0; margin: 0; white-space: nowrap; }
 .save-search input {
   width: 180px;
   padding: 5px 2px;

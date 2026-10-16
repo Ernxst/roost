@@ -207,8 +207,8 @@ function Rail() {
       </ul>
       {adding.value ? (
         <form class="new-collection" onSubmit={submit}>
-          <label for="new-collection" class="sr-only">
-            Collection name
+          <label for="new-collection" class="field-label">
+            New collection
           </label>
           <input
             id="new-collection"
@@ -383,16 +383,18 @@ function SearchHints({ open, input }: { open: boolean; input: { current: HTMLInp
 function SaveSearch() {
   const naming = useSignal(false);
   const name = useSignal("");
+  const error = useSignal("");
   async function save(e: Event) {
     e.preventDefault();
     try {
       const c = await createCollection(name.value, search.value);
       naming.value = false;
       name.value = "";
+      error.value = "";
       search.value = "";
       view.value = { kind: "collection", id: c.id };
     } catch (err) {
-      fail(err);
+      error.value = errorText(err);
     }
   }
   if (!naming.value) {
@@ -404,18 +406,25 @@ function SaveSearch() {
   }
   return (
     <form class="save-search" onSubmit={save}>
-      <label for="save-search" class="sr-only">
-        Smart collection name
+      <label for="save-search" class="field-label">
+        Save search as
       </label>
       <input
         id="save-search"
         value={name.value}
-        onInput={(e) => (name.value = e.currentTarget.value)}
+        onInput={(e) => ((name.value = e.currentTarget.value), (error.value = ""))}
         onKeyDown={(e) => e.key === "Escape" && (naming.value = false)}
         placeholder="Name this search…"
         autoComplete="off"
+        aria-invalid={error.value ? "true" : undefined}
+        aria-describedby={error.value ? "save-search-error" : undefined}
         ref={(el) => el?.focus()}
       />
+      {error.value && (
+        <p id="save-search-error" class="field-error">
+          {error.value}
+        </p>
+      )}
     </form>
   );
 }
