@@ -623,6 +623,7 @@ func (l *Library) startSync(full, background bool) error {
 		}
 		rec, err := xsync.Run(context.Background(), p, s, xsync.Options{
 			Full:         full,
+			Background:   background,
 			LoginTimeout: loginTimeout,
 			Progress: func(p xsync.Progress) {
 				log.Printf("sync: %s, %d seen, %d new, %d removed %s", p.Phase, p.Seen, p.Added, p.Removed, p.Message)

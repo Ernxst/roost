@@ -300,6 +300,13 @@ func (s *Store) MarkRemoved(syncStart, now time.Time) (int, error) {
 	return int(n), err
 }
 
+// UnseenCurrent counts current bookmarks not seen since the sync began.
+func (s *Store) UnseenCurrent(syncStart time.Time) (int, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT count(*) FROM bookmarks WHERE removed_at IS NULL AND last_seen_at < ?`, syncStart.UnixMilli()).Scan(&n)
+	return n, err
+}
+
 // Query selects bookmarks for the library view.
 type Query struct {
 	Search string `json:"search"`
