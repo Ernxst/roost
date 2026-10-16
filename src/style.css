@@ -574,8 +574,8 @@ div.empty p { margin: 0 0 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sheet { animation: fade-in 160ms ease-out; }
-  @keyframes fade-in { from { opacity: 0; } }
 }
+@keyframes fade-in { from { opacity: 0; } }
 
 /* The head stays in view while a long post or dialog scrolls, so ✕ is always in reach. */
 .sheet-head {
@@ -824,7 +824,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 }
 /* The last card dealt gives way to the finish line with the same gesture. */
 .lede.dealt { animation: deal 220ms var(--ease); }
-@media (prefers-reduced-motion: reduce) { .card.big, .lede.dealt { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .card.big, .lede.dealt { animation: fade-in 160ms ease-out; } }
 
 .sort-keys { position: sticky; top: calc(var(--titlebar) + 12px); display: grid; gap: 10px; }
 .sort-keys .hints-title { margin: 0; }
@@ -891,7 +891,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 .settings::backdrop { background: oklch(0.2 0.02 70 / 0.28); }
 .settings[open] { animation: settle 180ms var(--ease); }
 @keyframes settle { from { opacity: 0; scale: 0.98; } }
-@media (prefers-reduced-motion: reduce) { .settings[open] { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .settings[open] { animation: fade-in 160ms ease-out; } }
 .settings-body { padding: 0 24px 24px; }
 .settings .sheet-head { padding-top: 20px; }
 .settings h2 { margin: 0; }
