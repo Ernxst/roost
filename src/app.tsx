@@ -1,4 +1,4 @@
-import { useComputed, useSignal, useSignalEffect } from "@preact/signals";
+import { signal, useComputed, useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { Library, type Bookmark, type Collection } from "./mygo";
 import { fixtureHref, fixtureMode, isFixtureMode, type FixtureMode } from "./fixture-mode";
@@ -318,8 +318,9 @@ function SyncStatus() {
   if (p?.phase === "login") return <span class="ticker live">Sign in to X in the window that opened</span>;
   if (p?.phase === "failed") {
     return (
-      <span class="ticker failed" title={p.message}>
-        Sync failed: {p.message}
+      <span class="ticker failed">
+        <span class="ticker-mark" aria-hidden="true">!</span>
+        Sync failed
       </span>
     );
   }
@@ -328,8 +329,24 @@ function SyncStatus() {
     <span class="ticker" title={longDate(last.finishedAt)}>
       Synced {relative(last.finishedAt)} · {last.added.toLocaleString()} new
       {last.removed ? ` · ${last.removed.toLocaleString()} missing from bookmarks` : ""}
-      {p?.phase === "done" && p.message ? ` · ${p.message}` : ""}
     </span>
+  );
+}
+
+const dismissedSyncNotice = signal<unknown>(null);
+
+/** The full text of a failed or incomplete sync. It floats under the toolbar so nothing below it moves. */
+function SyncNotice() {
+  const p = progress.value;
+  const failed = p?.phase === "failed";
+  if (!p || !p.message || (!failed && p.phase !== "done") || dismissedSyncNotice.value === p) return null;
+  return (
+    <div class={failed ? "sync-notice failed" : "sync-notice"} role={failed ? "alert" : "status"}>
+      <p>{failed ? `Sync failed: ${p.message}` : p.message}</p>
+      <button class="press quiet" onClick={() => (dismissedSyncNotice.value = p)}>
+        Dismiss
+      </button>
+    </div>
   );
 }
 
@@ -352,6 +369,7 @@ function Toolbar() {
           Sync
         </button>
       </div>
+      <SyncNotice />
     </header>
   );
 }
