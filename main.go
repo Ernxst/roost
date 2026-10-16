@@ -379,6 +379,10 @@ func (l *Library) embedPosts() {
 	}
 	l.embedding.Lock()
 	defer l.embedding.Unlock()
+	if err := s.DropNonEnglishVectors(); err != nil {
+		log.Printf("meaning: %v", err)
+		return
+	}
 	model := l.meaning.Name()
 	total := 0
 	for {

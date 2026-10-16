@@ -232,7 +232,7 @@ func (s *Store) VectorCandidates(model string, limit int) ([]PostText, error) {
 	rows, err := s.db.Query(`
 		SELECT t.data, `+linkTitles+`
 		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id LEFT JOIN vectors v ON v.tweet_id = t.id
-		WHERE b.removed_at IS NULL AND (v.model IS NULL OR v.model != ?)
+		WHERE b.removed_at IS NULL AND json_extract(t.raw, '$.legacy.lang') = 'en' AND (v.model IS NULL OR v.model != ?)
 		ORDER BY b.sort_index DESC LIMIT ?`, model, limit)
 	if err != nil {
 		return nil, err
@@ -251,6 +251,15 @@ func (s *Store) VectorCandidates(model string, limit int) ([]PostText, error) {
 		out = append(out, PostText{ID: t.ID, Text: urlPattern.ReplaceAllString(suggestText(t, titles), "")})
 	}
 	return out, rows.Err()
+}
+
+// DropNonEnglishVectors removes sentence vectors for posts the English model
+// can't represent, including posts whose language changed on a later sync.
+func (s *Store) DropNonEnglishVectors() error {
+	_, err := s.db.Exec(`DELETE FROM vectors WHERE tweet_id IN (
+		SELECT id FROM tweets WHERE json_extract(raw, '$.legacy.lang') IS NOT 'en'
+	)`)
+	return err
 }
 
 var urlPattern = regexp.MustCompile(`https?://\S+`)

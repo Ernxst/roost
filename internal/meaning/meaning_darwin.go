@@ -12,8 +12,10 @@ import (
 
 var (
 	selAlloc     = objc.RegisterName("alloc")
+	selInit      = objc.RegisterName("init")
 	selInitUTF8  = objc.RegisterName("initWithUTF8String:")
 	selRelease   = objc.RegisterName("release")
+	selDrain     = objc.RegisterName("drain")
 	selRetain    = objc.RegisterName("retain")
 	selEmbedding = objc.RegisterName("sentenceEmbeddingForLanguage:")
 	selDimension = objc.RegisterName("dimension")
@@ -34,6 +36,8 @@ func New() (*Model, error) {
 	if _, err := purego.Dlopen("/System/Library/Frameworks/NaturalLanguage.framework/NaturalLanguage", purego.RTLD_GLOBAL|purego.RTLD_NOW); err != nil {
 		return nil, err
 	}
+	pool := objc.ID(objc.GetClass("NSAutoreleasePool")).Send(selAlloc).Send(selInit)
+	defer pool.Send(selDrain)
 	lang := nsString("en")
 	defer lang.Send(selRelease)
 	e := objc.ID(objc.GetClass("NLEmbedding")).Send(selEmbedding, lang)
@@ -56,6 +60,8 @@ func (m *Model) Name() string { return m.name }
 func (m *Model) Vector(text string) ([]float32, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	pool := objc.ID(objc.GetClass("NSAutoreleasePool")).Send(selAlloc).Send(selInit)
+	defer pool.Send(selDrain)
 	s := nsString(text)
 	defer s.Send(selRelease)
 	v := make([]float32, m.dimension)

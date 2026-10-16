@@ -47,11 +47,43 @@ func TestMigrationFailureRollsBackSchemaAndVersion(t *testing.T) {
 }
 
 func entry(id string, idx int64, text string, media bool) xparse.Entry {
-	t := xparse.Tweet{ID: id, AuthorHandle: "ada", AuthorName: "Ada Lovelace", Text: text, CreatedAt: time.Unix(1, 0), Raw: []byte("{}")}
+	t := xparse.Tweet{ID: id, AuthorHandle: "ada", AuthorName: "Ada Lovelace", Text: text, CreatedAt: time.Unix(1, 0), Raw: []byte(`{"legacy":{"lang":"en"}}`)}
 	if media {
 		t.Media = []xparse.Media{{Kind: "photo", Thumb: "x.jpg"}}
 	}
 	return xparse.Entry{SortIndex: idx, Tweet: t}
+}
+
+func TestVectorCandidatesSkipNonEnglishAndDropStaleVectors(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	english := entry("1", 10, "English post", false)
+	japanese := entry("2", 20, "日本語の投稿", false)
+	japanese.Tweet.Raw = []byte(`{"legacy":{"lang":"ja"}}`)
+	if _, err := s.Ingest([]xparse.Entry{english, japanese}, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveVectors("m1", map[string][]float32{"2": {0.5, 0.5}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DropNonEnglishVectors(); err != nil {
+		t.Fatal(err)
+	}
+	var vectors int
+	if err := s.db.QueryRow(`SELECT count(*) FROM vectors`).Scan(&vectors); err != nil {
+		t.Fatal(err)
+	}
+	if vectors != 0 {
+		t.Fatalf("non-English vectors left = %d", vectors)
+	}
+	candidates, err := s.VectorCandidates("m1", 10)
+	if err != nil || len(candidates) != 1 || candidates[0].ID != "1" {
+		t.Fatalf("English vector candidates = %+v, %v; want only post 1", candidates, err)
+	}
 }
 
 func ids(t *testing.T, s *Store, q Query) []string {
