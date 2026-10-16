@@ -675,7 +675,7 @@ div.empty p { margin: 0 0 14px; }
   opacity: 0;
   translate: 0 6px;
   pointer-events: none;
-  transition: opacity 180ms ease-out, translate 180ms ease-out;
+  transition: opacity 180ms var(--ease), translate 180ms var(--ease);
 }
 .notice[data-shown] { opacity: 1; translate: none; pointer-events: auto; }
 .notice p { flex: 1; margin: 0; overflow-wrap: anywhere; }
