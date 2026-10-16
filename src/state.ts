@@ -309,7 +309,7 @@ export async function toggleCollection(b: Bookmark, collectionID: number) {
   const name = collections.value.find((c) => c.id === collectionID)?.name ?? "collection";
   try {
     await Library.setInCollection(b.tweet.id, collectionID, inside);
-    announce(inside ? `Added to ${name}` : `Removed from ${name}`);
+    announce(inside ? `Filed under ${name}` : `Taken out of ${name}`);
   } catch (err) {
     fail(err);
     reload();
