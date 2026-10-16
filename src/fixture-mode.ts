@@ -1,6 +1,6 @@
-export type FixtureMode = "demo" | "worst" | "empty" | "one" | "thousand";
+export type FixtureMode = "demo" | "sample" | "worst" | "empty" | "one" | "thousand";
 
-const MODES: FixtureMode[] = ["demo", "worst", "empty", "one", "thousand"];
+const MODES: FixtureMode[] = ["demo", "sample", "worst", "empty", "one", "thousand"];
 const requestedMode = new URLSearchParams(window.location.search).get("data");
 export const fixtureMode: FixtureMode = import.meta.env.DEV && MODES.includes(requestedMode as FixtureMode)
   ? (requestedMode as FixtureMode)
