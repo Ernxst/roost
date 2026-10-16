@@ -34,9 +34,20 @@ type Tweet struct {
 	Quoted       *Tweet    `json:"quoted,omitempty"`
 	// ReplyTo is the ID of the post this one replies to.
 	ReplyTo string `json:"replyTo,omitempty"`
+	// Translation is X's translation of Text into the reader's language,
+	// which X sends with posts written in another.
+	Translation *Translation `json:"translation,omitempty"`
 	// Raw is X's own object for the post, kept so later versions of the
 	// parser can read fields this one ignores.
 	Raw json.RawMessage `json:"-"`
+}
+
+// Translation is a post's text in another language. Languages are BCP 47
+// codes such as "ja".
+type Translation struct {
+	Text string `json:"text"`
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 // Media is a photo, video or GIF attached to a post.
@@ -137,11 +148,20 @@ func parseTweet(node any) (Tweet, bool) {
 		}
 		t.Media = append(t.Media, item)
 	}
+	if tr := dig(r, "grok_translated_post_with_availability"); dig(tr, "is_available") == true {
+		from, to := str(dig(tr, "data", "source_language")), str(dig(tr, "data", "destination_language"))
+		if text := str(dig(tr, "data", "translation")); text != "" && from != to {
+			t.Translation = &Translation{Text: text, From: from, To: to}
+		}
+	}
 	// X appends a t.co link for attached media to the text; it duplicates
 	// the media shown below the text.
 	if len(media) > 0 {
 		if short := str(dig(media[0], "url")); short != "" {
 			t.Text = strings.TrimSpace(strings.TrimSuffix(t.Text, short))
+			if t.Translation != nil {
+				t.Translation.Text = strings.TrimSpace(strings.TrimSuffix(t.Translation.Text, short))
+			}
 		}
 	}
 
@@ -150,6 +170,15 @@ func parseTweet(node any) (Tweet, bool) {
 	}
 	t.Raw, _ = json.Marshal(r)
 	return t, true
+}
+
+// ParseTweet reads a post from X's own object for it, as Tweet.Raw keeps.
+func ParseTweet(raw []byte) (Tweet, bool) {
+	var node any
+	if err := json.Unmarshal(raw, &node); err != nil {
+		return Tweet{}, false
+	}
+	return parseTweet(node)
 }
 
 func dig(node any, path ...string) any {

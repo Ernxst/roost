@@ -610,6 +610,8 @@ func main() {
 			MinHeight:       520,
 			TitleBarStyle:   mygo.TitleBarHiddenInset,
 			BackgroundColor: "light-dark(#efe9dc, #15130f)", // --paper in src/style.css
+			Transparent:     true,
+			Vibrancy:        mygo.VibrancySidebar, // shows through the rail
 			StateKey:        "main",
 			URL:             "/",
 		})

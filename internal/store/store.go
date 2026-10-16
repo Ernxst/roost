@@ -124,10 +124,97 @@ func Open(path string) (*Store, error) {
 			return nil, err
 		}
 	}
-	return &Store{db: db}, nil
+	s := &Store{db: db}
+	if err := s.reparse(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("update library: %w", err)
+	}
+	return s, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }
+
+// parserVersion rises whenever xparse reads a field it did not read before.
+// Opening a library written by an older parser parses every post again from
+// the raw object it keeps, so posts saved earlier gain the field.
+const parserVersion = 1
+
+func (s *Store) reparse() error {
+	var version int
+	err := s.db.QueryRow(`SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'parser_version'`).Scan(&version)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if version >= parserVersion {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	type post struct {
+		rowid int64
+		raw   string
+	}
+	var posts []post
+	rows, err := tx.Query(`SELECT rowid, raw FROM tweets`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var p post
+		if err := rows.Scan(&p.rowid, &p.raw); err != nil {
+			rows.Close()
+			return err
+		}
+		posts = append(posts, p)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, p := range posts {
+		t, ok := xparse.ParseTweet([]byte(p.raw))
+		if !ok {
+			continue
+		}
+		data, _ := json.Marshal(t)
+		if _, err := tx.Exec(`UPDATE tweets SET data = ? WHERE rowid = ?`, string(data), p.rowid); err != nil {
+			return err
+		}
+		if err := index(tx, p.rowid, t); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(`INSERT INTO settings (key, value) VALUES ('parser_version', ?)
+		ON CONFLICT(key) DO UPDATE SET value = excluded.value`, fmt.Sprint(parserVersion)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// index makes a post findable by its text and its translation, its author,
+// and the post it quotes.
+func index(tx *sql.Tx, rowid int64, t xparse.Tweet) error {
+	text := t.Text
+	if t.Translation != nil {
+		text += "\n" + t.Translation.Text
+	}
+	quoted := ""
+	if q := t.Quoted; q != nil {
+		quoted = q.AuthorHandle + " " + q.AuthorName + " " + q.Text
+		if q.Translation != nil {
+			quoted += "\n" + q.Translation.Text
+		}
+	}
+	if _, err := tx.Exec(`DELETE FROM tweets_fts WHERE rowid = ?`, rowid); err != nil {
+		return err
+	}
+	_, err := tx.Exec(`INSERT INTO tweets_fts (rowid, text, author, quoted) VALUES (?, ?, ?, ?)`,
+		rowid, text, t.AuthorHandle+" "+t.AuthorName, quoted)
+	return err
+}
 
 // Ingest records entries seen on X at seenAt. An entry is new when the
 // library did not hold it as a current bookmark, which includes a post
@@ -152,15 +239,7 @@ func (s *Store) Ingest(entries []xparse.Entry, seenAt time.Time) (added int, err
 		if err != nil {
 			return 0, fmt.Errorf("store post %s: %w", t.ID, err)
 		}
-		quoted := ""
-		if t.Quoted != nil {
-			quoted = t.Quoted.AuthorHandle + " " + t.Quoted.AuthorName + " " + t.Quoted.Text
-		}
-		if _, err := tx.Exec(`DELETE FROM tweets_fts WHERE rowid = ?`, rowid); err != nil {
-			return 0, err
-		}
-		if _, err := tx.Exec(`INSERT INTO tweets_fts (rowid, text, author, quoted) VALUES (?, ?, ?, ?)`,
-			rowid, t.Text, t.AuthorHandle+" "+t.AuthorName, quoted); err != nil {
+		if err := index(tx, rowid, t); err != nil {
 			return 0, err
 		}
 

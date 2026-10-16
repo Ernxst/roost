@@ -28,8 +28,10 @@
 
 html, body { margin: 0; height: 100%; }
 
+/* The window draws macOS's sidebar material behind the page, so the page
+   leaves the rail's column unpainted for it to show through. */
 body {
-  background: var(--paper);
+  background: linear-gradient(to right, transparent var(--rail), var(--paper) var(--rail));
   color: var(--ink);
   font: 15px/1.45 var(--serif);
   -webkit-font-smoothing: antialiased;
@@ -99,9 +101,12 @@ kbd {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: calc(var(--titlebar) + 4px) 14px 28px;
-  background: var(--paper-deep);
+  /* A wash of paper keeps the material warm. */
+  background: color-mix(in oklab, var(--paper-deep) 55%, transparent);
   box-shadow: inset -1px 0 0 var(--rule);
 }
+.opaque body { background: var(--paper); }
+.opaque .rail { background: var(--paper-deep); }
 
 .masthead { padding-bottom: 18px; }
 
@@ -411,7 +416,7 @@ div.empty p { margin: 0 0 14px; }
   padding: 0;
 }
 .card .open:focus-visible { outline-offset: 3px; }
-.card a, .card video { position: relative; z-index: 2; }
+.card a, .card video, .card .translated button { position: relative; z-index: 2; }
 
 .byline { display: flex; align-items: center; gap: 9px; min-width: 0; }
 /* Names wrap rather than truncate: the card's open button covers the byline,
@@ -450,6 +455,24 @@ div.empty p { margin: 0 0 14px; }
   overflow-wrap: anywhere;
   text-wrap: pretty;
 }
+.translated {
+  margin: 6px 0 0;
+  font: 11px/1.4 var(--mono);
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+}
+.translated button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 3px;
+}
+@media (hover: hover) { .translated button:hover { color: var(--ink); text-decoration-color: currentColor; } }
+
 .text a {
   color: inherit;
   text-decoration: underline;
@@ -742,6 +765,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 }
 
 @media (max-width: 600px) {
+  body { background: var(--paper); }
   .shell { grid-template-columns: 1fr; }
   .rail { position: static; height: auto; }
   .notice { inset-inline-start: 16px; max-width: calc(100vw - 32px); }
@@ -777,7 +801,8 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
   color: var(--ink-3);
 }
 .hints ul { list-style: none; margin: 0; padding: 0; }
-.hints button {
+.hints button,
+.hints [role="option"] {
   display: flex;
   align-items: baseline;
   gap: 12px;
@@ -789,9 +814,11 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
   background: none;
   text-align: start;
 }
-@media (hover: hover) { .hints button:hover { background: var(--rule); } }
-.hints code { font: 12px var(--mono); color: var(--accent); min-width: 128px; }
-.hints span { font: italic 14px var(--serif); color: var(--ink-2); }
+.hints [role="option"] { cursor: pointer; }
+.hints [aria-selected="true"] { background: var(--rule); }
+@media (hover: hover) { .hints button:hover, .hints [role="option"]:hover { background: var(--rule); } }
+.hints code { font: 12px var(--mono); color: var(--accent); min-width: 128px; overflow-wrap: anywhere; }
+.hints span { font: italic 14px var(--serif); color: var(--ink-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .save-search { position: relative; display: flex; align-items: baseline; gap: 8px; }
 .save-search .field-label { margin: 0; white-space: nowrap; }

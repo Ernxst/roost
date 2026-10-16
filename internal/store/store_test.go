@@ -404,3 +404,40 @@ func TestSuggest(t *testing.T) {
 		t.Errorf("suggestions for a filed post = %+v", got)
 	}
 }
+
+func TestTranslationsAreParsedAgainAndSearchable(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lib.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A post saved by a parser that ignored translations: its data lacks
+	// one, but the raw object X sent has it.
+	e := entry("1", 10, "見て", false)
+	e.Tweet.Raw = []byte(`{"rest_id":"1","core":{"user_results":{"result":{"core":{"screen_name":"ada","name":"Ada Lovelace"}}}},
+		"legacy":{"created_at":"Mon Jun 28 04:13:47 +0000 2021","full_text":"見て"},
+		"grok_translated_post_with_availability":{"is_available":true,"data":{"source_language":"ja","destination_language":"en","translation":"Look"}}}`)
+	if _, err := s.Ingest([]xparse.Entry{e}, time.Unix(1, 0)); err != nil {
+		t.Fatal(err)
+	}
+	if got := ids(t, s, Query{Search: "look"}); len(got) != 0 {
+		t.Fatalf("found %v by a translation the post did not have yet", got)
+	}
+	if _, err := s.db.Exec(`DELETE FROM settings WHERE key = 'parser_version'`); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+
+	s, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	res, err := s.List(Query{Search: "look"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Items) != 1 || res.Items[0].Tweet.Translation == nil || res.Items[0].Tweet.Translation.From != "ja" {
+		t.Fatalf("reopened library = %+v, want the post found by its translation", res.Items)
+	}
+}
