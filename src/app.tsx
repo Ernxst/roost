@@ -324,20 +324,9 @@ function Toolbar() {
       </button>
       <div class="sync">
         <SyncStatus />
-        <div class="sync-buttons">
-          <button class="press" disabled={busy.value || isFixtureMode} onClick={() => startSync(false)}>
-            Sync
-          </button>
-          <button
-            class="press quiet"
-            disabled={busy.value || isFixtureMode}
-            onClick={() => startSync(true)}
-            aria-label="Full sync"
-            title="Read every bookmark and mark the ones gone from X"
-          >
-            Full
-          </button>
-        </div>
+        <button class="press" disabled={busy.value || isFixtureMode} onClick={() => startSync(false)}>
+          Sync
+        </button>
       </div>
     </header>
   );
