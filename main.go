@@ -141,7 +141,10 @@ func (l *Library) Sync(full bool) error {
 		defer page.Close()
 		_, err := xsync.Run(context.Background(), page, s, xsync.Options{
 			Full:     full,
-			Progress: func(p xsync.Progress) { SyncProgress.Broadcast(p) },
+			Progress: func(p xsync.Progress) {
+				log.Printf("sync: %s, %d seen, %d new, %d removed %s", p.Phase, p.Seen, p.Added, p.Removed, p.Message)
+				SyncProgress.Broadcast(p)
+			},
 		})
 		if err != nil {
 			log.Printf("sync: %v", err)
