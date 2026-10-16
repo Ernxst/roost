@@ -89,6 +89,18 @@ function Notice() {
   return (
     <div class={n.error ? "notice error" : "notice"} data-shown={n.shown || undefined} aria-hidden={!n.shown || undefined}>
       <p>{n.text}</p>
+      {n.action && (
+        <button
+          class="notice-action"
+          tabIndex={n.shown ? 0 : -1}
+          onClick={() => {
+            dismissNotice();
+            n.action?.run();
+          }}
+        >
+          {n.action.label}
+        </button>
+      )}
       {n.error && (
         <button class="close" onClick={dismissNotice} aria-label="Dismiss" tabIndex={n.shown ? 0 : -1}>
           ✕

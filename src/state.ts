@@ -38,14 +38,16 @@ export const announcement = signal("");
  * The same message as a slip at the foot of the window. Results fade after a
  * few seconds; an error stays until it is dismissed or replaced.
  */
-export const notice = signal<{ text: string; error: boolean; shown: boolean }>({ text: "", error: false, shown: false });
+export const notice = signal<{ text: string; error: boolean; shown: boolean; action?: NoticeAction }>({ text: "", error: false, shown: false });
+/** A way forward offered beside an error, such as retrying what failed. */
+export type NoticeAction = { label: string; run: () => void };
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
-export function announce(text: string, error = false) {
+export function announce(text: string, error = false, action?: NoticeAction) {
   announcement.value = "";
   requestAnimationFrame(() => (announcement.value = text));
   clearTimeout(noticeTimer);
-  notice.value = { text, error, shown: true };
+  notice.value = { text, error, shown: true, action };
   if (!error) noticeTimer = setTimeout(dismissNotice, 4000);
 }
 
@@ -377,7 +379,7 @@ events.syncProgress.on((p) => {
     clearTimeout(syncRefresh);
     reload();
     refreshMeta();
-    if (p.phase === "failed") announce(`Sync failed: ${p.message}`, true);
+    if (p.phase === "failed") announce(`Sync failed: ${p.message}`, true, { label: "Try again", run: () => startSync(p.full) });
     else {
       const parts = [`${p.added} new`];
       if (p.removed) parts.push(`${p.removed} removed on X`);
