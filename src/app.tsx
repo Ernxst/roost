@@ -343,6 +343,7 @@ function Toolbar() {
             class="press quiet"
             disabled={busy.value || isFixtureMode}
             onClick={() => startSync(true)}
+            aria-label="Full sync"
             title="Read every bookmark and mark the ones gone from X"
           >
             Full
