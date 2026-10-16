@@ -672,7 +672,7 @@ div.empty p { margin: 0 0 14px; }
   padding-inline-end: 4px;
   background: var(--card);
   color: var(--ink);
-  box-shadow: inset 3px 0 0 var(--accent), 0 0 0 1px var(--rule), 0 10px 28px -12px var(--shadow);
+  box-shadow: 0 0 0 1.5px var(--accent), 0 10px 28px -12px var(--shadow);
 }
 .notice .close { flex: none; width: 28px; height: 28px; color: inherit; }
 @media (prefers-reduced-motion: reduce) { .notice { translate: none; } }
