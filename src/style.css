@@ -82,6 +82,9 @@ kbd {
   grid-template-columns: var(--rail) minmax(0, 1fr);
   min-height: 100vh;
 }
+/* The window is never narrower than 760px, so the rail narrows rather than
+   stacking above the feed. */
+@media (max-width: 1000px) { :root { --rail: 212px; } }
 
 /* ---- Rail ---- */
 
@@ -217,7 +220,7 @@ kbd {
 
 /* ---- Toolbar ---- */
 
-.desk { min-width: 0; outline: none; }
+.desk { min-width: 0; outline: none; container: desk / inline-size; }
 
 .toolbar {
   --app-region: drag;
@@ -658,7 +661,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.16);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px) {
   .shell { grid-template-columns: 1fr; }
   .rail { position: static; height: auto; }
   .notice { inset-inline-start: 16px; max-width: calc(100vw - 32px); }
@@ -767,7 +770,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 .sort-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .sort-keys .hint { font-size: 13px; }
 
-@media (max-width: 980px) {
+@container desk (max-width: 900px) {
   .sort-table { grid-template-columns: minmax(0, 1fr); }
   .sort-keys { position: static; }
 }
@@ -1024,7 +1027,7 @@ mark { background: color-mix(in oklch, oklch(0.88 0.15 95) 70%, transparent); co
 
 /* Search takes its own row, then the media filter and sync buttons, then the
    sync status, which wraps rather than shrinking to an ellipsis. */
-@media (max-width: 640px) {
+@container desk (max-width: 760px) {
   .toolbar { flex-wrap: wrap; gap: 10px 12px; padding: 10px 16px; }
   .search { flex: 1 1 100%; max-width: none; }
   .sync { display: contents; }
