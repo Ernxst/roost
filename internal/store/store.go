@@ -107,6 +107,12 @@ INSERT INTO notes_fts (rowid, text)
 	FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id;
 `, `
 ALTER TABLE highlights ADD COLUMN note TEXT NOT NULL DEFAULT '';
+`, `
+CREATE TABLE vectors (
+	tweet_id TEXT PRIMARY KEY REFERENCES tweets(id),
+	model TEXT NOT NULL,
+	vector BLOB NOT NULL
+);
 `}
 
 // Open opens the library at path, creating and migrating it as needed.

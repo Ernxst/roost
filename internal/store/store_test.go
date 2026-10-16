@@ -530,3 +530,53 @@ func TestAuthors(t *testing.T) {
 		t.Error("summary of an author with no bookmarks")
 	}
 }
+
+func TestSuggestByMeaning(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	target := entry("4", 40, "kittens asleep in a box https://t.co/x", false)
+	target.Tweet.AuthorHandle = "grace"
+	s.Ingest([]xparse.Entry{
+		entry("1", 10, "my tabby on the sofa", false),
+		entry("2", 20, "feline nutrition guide", false),
+		entry("3", 30, "a box for moving house", false),
+		target,
+	}, now)
+	cats, _ := s.CreateCollection("Cats", 10, "", now)
+	moving, _ := s.CreateCollection("Moving", 20, "", now)
+	s.SetInCollection("1", cats.ID, true, now)
+	s.SetInCollection("2", cats.ID, true, now)
+	s.SetInCollection("3", moving.ID, true, now)
+
+	// By words alone, "box" ties the post to Moving.
+	if got, _ := s.Suggest("4", 3); len(got) == 0 || got[0].CollectionID != moving.ID {
+		t.Fatalf("suggestions by words = %+v, want Moving first", got)
+	}
+
+	todo, err := s.VectorCandidates("m1", 10)
+	if err != nil || len(todo) != 4 || todo[0].ID != "4" || todo[0].Text != "kittens asleep in a box  " {
+		t.Fatalf("candidates = %+v, %v", todo, err)
+	}
+	err = s.SaveVectors("m1", map[string][]float32{
+		"1": {1, 0.1, 0}, "2": {0.9, 0, 0.1}, "3": {0, 1, 0}, "4": {1, 0.3, 0},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if todo, _ := s.VectorCandidates("m1", 10); len(todo) != 0 {
+		t.Errorf("candidates after saving = %+v", todo)
+	}
+	if got, _ := s.Suggest("4", 3); len(got) == 0 || got[0].CollectionID != cats.ID {
+		t.Errorf("suggestions with meaning = %+v, want Cats first", got)
+	}
+
+	// A new model drops the old vectors, so every post is embedded again.
+	s.SaveVectors("m2", map[string][]float32{"1": {}})
+	if todo, _ := s.VectorCandidates("m2", 10); len(todo) != 3 {
+		t.Errorf("candidates for a new model = %+v, want the three not yet embedded", todo)
+	}
+}
