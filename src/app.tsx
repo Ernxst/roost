@@ -45,7 +45,7 @@ import { HighlightList, Highlighter, HighlightsView, marked, usePostHighlights }
 import { DuplicatesView, WallView } from "./wall";
 import { WhatsNew } from "./changelog";
 import { CollectionEditor } from "./collection";
-import { Keys } from "./keys";
+import { inDialog, Keys } from "./keys";
 import { Avatar, longDate, longDay, MediaGrid, openExternal, previewRatio, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
@@ -767,7 +767,7 @@ function typing(e: KeyboardEvent) {
 function useKeyboard() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || inDialog(e)) return;
       if (e.key === "Escape" && opened.value) {
         opened.value = null;
         return;

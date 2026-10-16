@@ -42,6 +42,11 @@ const APP: Key[] = [
   [<kbd>?</kbd>, "These keys"],
 ];
 
+/** Whether a key was pressed inside an open dialog, which handles its own keys. */
+export function inDialog(e: KeyboardEvent) {
+  return !!(e.target as Element).closest?.("dialog[open]");
+}
+
 function List({ title, keys }: { title: string; keys: Key[] }) {
   return (
     <section class="keys-group">
@@ -65,7 +70,7 @@ export function Keys() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const el = e.target as HTMLElement;
-      if (e.key !== "?" || e.metaKey || e.ctrlKey || el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)) return;
+      if (e.key !== "?" || e.metaKey || e.ctrlKey || inDialog(e) || el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)) return;
       e.preventDefault();
       dialog.current?.showModal();
     }

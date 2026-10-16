@@ -59,7 +59,12 @@ export function CollectionEditor({ c, onClose }: { c: Collection; onClose: () =>
   // Keep the collection's own hue on offer even if it is not one roost assigns.
   const hues = HUES.includes(c.hue) ? HUES : [c.hue, ...HUES];
   return (
-    <form class="collection-editor" onSubmit={save} onKeyDown={(e) => e.key === "Escape" && onClose()} aria-label={`Edit ${c.name}`}>
+    <form class="collection-editor" onSubmit={save} onKeyDown={(e) => {
+        if (e.key !== "Escape") return;
+        // Esc closes the editor only, not the post open beside it.
+        e.stopPropagation();
+        onClose();
+      }} aria-label={`Edit ${c.name}`}>
       <label class="field">
         <span class="field-label">Name</span>
         <input

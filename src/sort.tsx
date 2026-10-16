@@ -1,6 +1,7 @@
 import { useComputed, useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { ink, Stamps } from "./card";
+import { inDialog } from "./keys";
 import { Library, type Bookmark } from "./mygo";
 import { announce, createCollection, fail, file, items, loading, manual, opened, reload, setAside, stats, total } from "./state";
 import { useSuggestions } from "./suggest";
@@ -95,7 +96,7 @@ export function SortMode() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey || opened.value) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || opened.value || inDialog(e)) return;
       const el = e.target as HTMLElement;
       if (["INPUT", "TEXTAREA"].includes(el.tagName)) return;
       const digit = /^Digit([1-9])$/.exec(e.code);
