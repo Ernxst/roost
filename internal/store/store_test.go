@@ -490,3 +490,43 @@ func TestLastFullSync(t *testing.T) {
 		t.Errorf("last full sync = %v, want the only complete one", at)
 	}
 }
+
+func TestAuthors(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	grace := entry("4", 40, "compilers", false)
+	grace.Tweet.AuthorHandle, grace.Tweet.AuthorName = "grace", "Grace Hopper"
+	s.Ingest([]xparse.Entry{entry("1", 10, "a", false), entry("2", 20, "b", false), entry("3", 30, "c", false), grace}, now)
+	s.MarkRemoved(now.Add(time.Second), now.Add(time.Second))
+	s.Ingest([]xparse.Entry{entry("1", 10, "a", false), entry("2", 20, "b", false), grace}, now.Add(2*time.Second))
+	reading, _ := s.CreateCollection("Reading", 10, "", now)
+	essays, _ := s.CreateCollection("Essays", 20, "", now)
+	s.SetInCollection("1", reading.ID, true, now)
+	s.SetInCollection("2", reading.ID, true, now)
+	s.SetInCollection("2", essays.ID, true, now)
+	s.SetInCollection("3", essays.ID, true, now)
+
+	all, err := s.Authors(-1)
+	if err != nil || len(all) != 2 || all[0].Handle != "ada" || all[0].Count != 2 {
+		t.Fatalf("authors = %+v, %v", all, err)
+	}
+	a, err := s.AuthorSummary("ADA")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Handle != "ada" || a.Name != "Ada Lovelace" || a.Count != 2 || a.Gone != 1 {
+		t.Errorf("summary = %+v", a)
+	}
+	// Post 3 is gone from X, so Essays holds one current post by Ada.
+	want := []CollectionCount{{reading.ID, 2}, {essays.ID, 1}}
+	if len(a.Collections) != 2 || a.Collections[0] != want[0] || a.Collections[1] != want[1] {
+		t.Errorf("collections = %+v, want %+v", a.Collections, want)
+	}
+	if _, err := s.AuthorSummary("nobody"); err == nil {
+		t.Error("summary of an author with no bookmarks")
+	}
+}

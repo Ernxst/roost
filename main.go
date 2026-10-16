@@ -80,13 +80,23 @@ func (l *Library) Collections() ([]store.Collection, error) {
 	return s.Collections()
 }
 
-// Authors lists the authors the user has bookmarked most.
+// Authors lists the authors the user has bookmarked most, every one of them
+// if limit is negative.
 func (l *Library) Authors(limit int) ([]store.Author, error) {
 	s, err := l.store()
 	if err != nil {
 		return nil, err
 	}
 	return s.Authors(limit)
+}
+
+// AuthorSummary describes what the library holds by one author.
+func (l *Library) AuthorSummary(handle string) (store.AuthorSummary, error) {
+	s, err := l.store()
+	if err != nil {
+		return store.AuthorSummary{}, err
+	}
+	return s.AuthorSummary(handle)
 }
 
 // CreateCollection makes a collection; a non-empty query makes it a smart

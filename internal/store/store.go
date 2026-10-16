@@ -597,7 +597,8 @@ type Author struct {
 	Count  int    `json:"count"`
 }
 
-// Authors returns the authors with the most current bookmarks.
+// Authors returns the authors with the most current bookmarks, every one of
+// them if limit is negative.
 func (s *Store) Authors(limit int) ([]Author, error) {
 	rows, err := s.db.Query(`
 		SELECT t.author_handle, json_extract(max(t.data), '$.authorName'), json_extract(max(t.data), '$.authorAvatar'), count(*) AS n
@@ -619,6 +620,56 @@ func (s *Store) Authors(limit int) ([]Author, error) {
 		out = append(out, a)
 	}
 	return out, rows.Err()
+}
+
+// AuthorSummary describes what the library holds by one author.
+type AuthorSummary struct {
+	Author
+	// Gone counts the author's bookmarks removed on X.
+	Gone int `json:"gone"`
+	// Collections counts the author's current bookmarks in each collection
+	// they are filed in, most first.
+	Collections []CollectionCount `json:"collections"`
+}
+
+type CollectionCount struct {
+	ID    int64 `json:"id"`
+	Count int   `json:"count"`
+}
+
+func (s *Store) AuthorSummary(handle string) (AuthorSummary, error) {
+	var a AuthorSummary
+	var found, name, avatar sql.NullString
+	err := s.db.QueryRow(`
+		SELECT max(t.author_handle), json_extract(max(t.data), '$.authorName'), json_extract(max(t.data), '$.authorAvatar'),
+			count(*) FILTER (WHERE b.removed_at IS NULL), count(*) FILTER (WHERE b.removed_at IS NOT NULL)
+		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id
+		WHERE t.author_handle = ? COLLATE NOCASE`, handle).Scan(&found, &name, &avatar, &a.Count, &a.Gone)
+	if err != nil {
+		return a, err
+	}
+	if !found.Valid {
+		return a, fmt.Errorf("no bookmarks by @%s", handle)
+	}
+	a.Handle, a.Name, a.Avatar = found.String, name.String, avatar.String
+	rows, err := s.db.Query(`
+		SELECT ci.collection_id, count(*) AS n
+		FROM collection_items ci JOIN bookmarks b ON b.tweet_id = ci.tweet_id JOIN tweets t ON t.id = ci.tweet_id
+		WHERE t.author_handle = ? COLLATE NOCASE AND b.removed_at IS NULL
+		GROUP BY ci.collection_id ORDER BY n DESC`, handle)
+	if err != nil {
+		return a, err
+	}
+	defer rows.Close()
+	a.Collections = []CollectionCount{}
+	for rows.Next() {
+		var c CollectionCount
+		if err := rows.Scan(&c.ID, &c.Count); err != nil {
+			return a, err
+		}
+		a.Collections = append(a.Collections, c)
+	}
+	return a, rows.Err()
 }
 
 type Sync struct {

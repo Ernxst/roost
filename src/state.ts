@@ -8,6 +8,7 @@ export type View =
   | { kind: "removed" }
   | { kind: "collection"; id: number }
   | { kind: "author"; handle: string }
+  | { kind: "authors" }
   | { kind: "sort" }
   | { kind: "revisit" }
   | { kind: "highlights" }
@@ -97,8 +98,8 @@ function loadFixtureData() {
 export async function reload() {
   if (view.value.kind === "revisit") return loadRevisit();
   if (view.value.kind === "highlights") return loadHighlights();
-  // The wall and duplicates load their own bookmarks.
-  if (view.value.kind === "wall" || view.value.kind === "duplicates") return;
+  // The wall, duplicates and authors load their own lists.
+  if (view.value.kind === "wall" || view.value.kind === "duplicates" || view.value.kind === "authors") return;
   const g = ++generation;
   loading.value = true;
   if (import.meta.env.DEV && isFixtureMode) {

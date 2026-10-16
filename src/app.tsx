@@ -47,6 +47,7 @@ import { WhatsNew } from "./changelog";
 import { CollectionEditor } from "./collection";
 import { inDialog, Keys } from "./keys";
 import { SearchBox } from "./search";
+import { author, AuthorHead, AuthorsView, showAuthor } from "./authors";
 import { Avatar, longDate, longDay, MediaGrid, openExternal, previewRatio, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
@@ -71,6 +72,8 @@ export function App() {
           <WallView />
         ) : view.value.kind === "duplicates" ? (
           <DuplicatesView />
+        ) : view.value.kind === "authors" ? (
+          <AuthorsView />
         ) : (
           <Feed />
         )}
@@ -269,6 +272,7 @@ function Rail() {
                 </button>
               </li>
             ))}
+            <RailItem target={{ kind: "authors" }} label="All authors" disabled={isFixtureMode} />
           </ul>
         </>
       )}
@@ -412,8 +416,10 @@ function viewTitle(v: View): string {
       return "Media wall";
     case "duplicates":
       return "Duplicates";
+    case "authors":
+      return "Authors";
     case "author": {
-      const a = authors.value.find((a) => a.handle === v.handle);
+      const a = author.value?.handle.toLowerCase() === v.handle.toLowerCase() ? author.value : authors.value.find((a) => a.handle === v.handle);
       return a?.name || `@${v.handle}`;
     }
   }
@@ -498,6 +504,7 @@ function Feed() {
           }}
         />
       )}
+      {v.kind === "author" && !isFixtureMode && <AuthorHead handle={v.handle} />}
       {!loading.value && total.value === 0 && <Empty />}
       <div class="columns" ref={desk}>
         {columns.value.map((col, i) => (
@@ -625,8 +632,18 @@ function Sheet() {
       <div class="byline big">
         <Avatar src={t.authorAvatar} name={t.authorName} size={40} />
         <h2 class="who">
-          <span class="name" dir="auto">{t.authorName}</span>
-          <span class="handle">@{t.authorHandle}</span>
+          <button
+            class="author-link"
+            disabled={isFixtureMode}
+            onClick={() => {
+              opened.value = null;
+              showAuthor(t.authorHandle);
+            }}
+            title={`Every post kept by @${t.authorHandle}`}
+          >
+            <span class="name" dir="auto">{t.authorName}</span>
+            <span class="handle">@{t.authorHandle}</span>
+          </button>
         </h2>
       </div>
       {isFixtureMode ? (

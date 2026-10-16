@@ -16,7 +16,7 @@ const kinds: [Kind, string][] = [
 const emptyKind: Record<Kind, string> = { all: "photos, videos or GIFs", photo: "photos", video: "videos", animated_gif: "GIFs" };
 
 /** Loads a list once per view, and again when a sync changes the library. */
-function useLoad<T>(load: () => Promise<T[]>) {
+export function useLoad<T>(load: () => Promise<T[]>) {
   const list = useSignal<T[] | null>(null);
   const total = stats.value?.total;
   useEffect(() => {

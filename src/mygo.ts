@@ -18,6 +18,15 @@ export interface Author {
   count: number;
 }
 
+export interface AuthorSummary {
+  handle: string;
+  name: string;
+  avatar: string;
+  count: number;
+  gone: number;
+  collections: CollectionCount[];
+}
+
 export interface Bookmark {
   tweet: Tweet;
   note: string;
@@ -34,6 +43,11 @@ export interface Collection {
   name: string;
   hue: number;
   query: string;
+  count: number;
+}
+
+export interface CollectionCount {
+  id: number;
   count: number;
 }
 
@@ -200,7 +214,14 @@ export const Library = {
   allHighlights(): Promise<Highlight[]> {
     return call("Library.AllHighlights");
   },
-  /** Authors lists the authors the user has bookmarked most. */
+  /** AuthorSummary describes what the library holds by one author. */
+  authorSummary(handle: string): Promise<AuthorSummary> {
+    return call("Library.AuthorSummary", handle);
+  },
+  /**
+   * Authors lists the authors the user has bookmarked most, every one of them
+   * if limit is negative.
+   */
   authors(limit: number): Promise<Author[]> {
     return call("Library.Authors", limit);
   },
