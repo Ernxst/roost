@@ -669,6 +669,7 @@ div.empty p { margin: 0 0 14px; }
 }
 .notice[data-shown] { opacity: 1; translate: none; pointer-events: auto; }
 .notice p { flex: 1; margin: 0; overflow-wrap: anywhere; }
+.notice.acting { padding-inline-end: 4px; }
 .notice.error {
   padding-inline-end: 4px;
   background: var(--card);
@@ -683,13 +684,14 @@ div.empty p { margin: 0 0 14px; }
   border: 0;
   border-radius: 3px;
   background: none;
-  color: var(--accent);
+  color: inherit;
   font: 500 11px var(--mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
 }
-@media (hover: hover) { .notice-action:hover { background: var(--paper-deep); } }
+.notice.error .notice-action { color: var(--accent); }
+@media (hover: hover) { .notice-action:hover { background: color-mix(in oklch, currentColor 14%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .notice { translate: none; } }
 /* Clear the development fixture switcher. */
 body:has(.fixture-switcher) .notice { bottom: 64px; }

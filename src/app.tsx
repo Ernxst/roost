@@ -88,7 +88,7 @@ export function App() {
 function Notice() {
   const n = notice.value;
   return (
-    <div class={n.error ? "notice error" : "notice"} data-shown={n.shown || undefined} aria-hidden={!n.shown || undefined}>
+    <div class={n.error ? "notice error" : n.action ? "notice acting" : "notice"} data-shown={n.shown || undefined} aria-hidden={!n.shown || undefined}>
       <p>{n.text}</p>
       {n.action && (
         <button
@@ -102,7 +102,7 @@ function Notice() {
           {n.action.label}
         </button>
       )}
-      {n.error && (
+      {(n.error || n.action) && (
         <button class="close" onClick={dismissNotice} aria-label="Dismiss" tabIndex={n.shown ? 0 : -1}>
           ✕
         </button>

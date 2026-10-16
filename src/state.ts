@@ -36,7 +36,8 @@ export const progress = signal<Progress | null>(null);
 export const announcement = signal("");
 /**
  * The same message as a slip at the foot of the window. Results fade after a
- * few seconds; an error stays until it is dismissed or replaced.
+ * few seconds; an error, or a notice with an action, stays until it is
+ * dismissed or replaced.
  */
 export const notice = signal<{ text: string; error: boolean; shown: boolean; action?: NoticeAction }>({ text: "", error: false, shown: false });
 /** A way forward offered beside an error, such as retrying what failed. */
@@ -48,7 +49,8 @@ export function announce(text: string, error = false, action?: NoticeAction) {
   requestAnimationFrame(() => (announcement.value = text));
   clearTimeout(noticeTimer);
   notice.value = { text, error, shown: true, action };
-  if (!error) noticeTimer = setTimeout(dismissNotice, 4000);
+  // A notice that asks for something waits for an answer.
+  if (!error && !action) noticeTimer = setTimeout(dismissNotice, 4000);
 }
 
 export function dismissNotice() {

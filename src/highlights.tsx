@@ -168,15 +168,25 @@ export function usePostHighlights(b: Bookmark | undefined) {
     list.value = [];
     if (b) Library.highlights(b.tweet.id).then((h) => (list.value = h));
   }, [b?.tweet.id]);
+  async function restore(h: Highlight) {
+    try {
+      const back = await Library.addHighlight(h.tweetId, h.source, h.quote);
+      list.value = [...list.value, back];
+      announce("Highlight restored");
+    } catch (err) {
+      fail(err);
+    }
+  }
   return {
     list,
     add: (h: Highlight) => (list.value = [...list.value, h]),
     remove: async (id: number) => {
       const before = list.value;
+      const gone = before.find((h) => h.id === id);
       list.value = before.filter((h) => h.id !== id);
       try {
         await Library.deleteHighlight(id);
-        announce("Highlight removed");
+        if (gone) announce("Highlight removed", false, { label: "Undo", run: () => restore(gone) });
       } catch (err) {
         list.value = before;
         fail(err);
