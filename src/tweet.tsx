@@ -126,6 +126,7 @@ export function MediaGrid({ media, playable = false }: { media: Media[]; playabl
               poster={cached(m.thumb)}
               controls
               playsInline
+              preload="metadata"
               loop={m.kind === "animated_gif"}
               style={style}
             />
