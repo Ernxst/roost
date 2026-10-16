@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { Library, type MediaUsage, type Result, type Settings } from "./mygo";
-import { announce, count, fail } from "./state";
+import { announce, count, fail, syncing, startSync } from "./state";
 
 const size = (bytes: number) =>
   bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : bytes < 1e9 ? `${(bytes / 1e6).toFixed(0)} MB` : `${(bytes / 1e9).toFixed(1)} GB`;
@@ -109,6 +109,18 @@ export function SettingsButton() {
                   <input type="checkbox" checked={s.notify} disabled={s.syncEvery === 0} onChange={(e) => change({ notify: e.currentTarget.checked })} />
                   <span>Tell me when bookmarks arrive or leave X</span>
                 </label>
+              </section>
+              <section class="setting">
+                <h3>Posts gone from X</h3>
+                <p class="hint">
+                  A sync stops at the first bookmark roost already has. To find the posts you unbookmarked or X took down, read every
+                  bookmark; a large library takes a few minutes.
+                </p>
+                <div class="row">
+                  <button class="press quiet" disabled={syncing.value} onClick={() => (dialog.current?.close(), startSync(true))}>
+                    Read every bookmark
+                  </button>
+                </div>
               </section>
               <section class="setting">
                 <h3>Offline media</h3>

@@ -1,4 +1,4 @@
-import { batch, effect, signal } from "@preact/signals";
+import { batch, computed, effect, signal } from "@preact/signals";
 import { events, Library, type Author, type Bookmark, type Collection, type Progress, type Highlight, type Query, type Revisit, type Stats } from "./mygo";
 import { fixtureMode, isFixtureMode } from "./fixture-mode";
 
@@ -42,6 +42,10 @@ export const cursor = signal<string | null>(null);
 /** The bookmark shown in the detail sheet. */
 export const opened = signal<string | null>(null);
 export const progress = signal<Progress | null>(null);
+export const syncing = computed(() => {
+  const phase = progress.value?.phase;
+  return phase === "loading" || phase === "reading" || phase === "login";
+});
 /** Text for the polite live region: results, sync outcomes, errors. */
 export const announcement = signal("");
 /**

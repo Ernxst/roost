@@ -23,6 +23,7 @@ import {
   notice,
   opened,
   progress,
+  syncing,
   reload,
   refreshMeta,
   saveNote,
@@ -325,10 +326,6 @@ function SyncStatus() {
 }
 
 function Toolbar() {
-  const busy = useComputed(() => {
-    const ph = progress.value?.phase;
-    return ph === "loading" || ph === "reading" || ph === "login";
-  });
   return (
     <header class="toolbar">
       <SearchBox />
@@ -338,20 +335,9 @@ function Toolbar() {
       </button>
       <div class="sync">
         <SyncStatus />
-        <div class="sync-buttons">
-          <button class="press" disabled={busy.value || isFixtureMode} onClick={() => startSync(false)}>
-            Sync
-          </button>
-          <button
-            class="press quiet"
-            disabled={busy.value || isFixtureMode}
-            onClick={() => startSync(true)}
-            aria-label="Full sync"
-            title="Read every bookmark and mark the ones gone from X"
-          >
-            Full
-          </button>
-        </div>
+        <button class="press" disabled={syncing.value || isFixtureMode} onClick={() => startSync(false)}>
+          Sync
+        </button>
       </div>
     </header>
   );
