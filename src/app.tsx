@@ -528,11 +528,40 @@ function Feed() {
   );
 }
 
+function emptyText(v: View): string {
+  switch (v.kind) {
+    case "unsorted":
+      return "Every post is filed.";
+    case "removed":
+      return "Every kept post is still on X.";
+    case "collection":
+      return collections.value.find((c) => c.id === v.id)?.query
+        ? "No posts match this collection’s search yet."
+        : "Nothing filed here yet. Open a post and file it under this collection, or sort the unsorted.";
+    default:
+      return "Nothing here yet.";
+  }
+}
+
 function Empty() {
   const libraryEmpty = (stats.value?.total ?? 0) === 0 && (stats.value?.removed ?? 0) === 0;
-  if (!libraryEmpty) {
-    return <p class="empty">Nothing here{search.value ? " matches that search" : " yet"}.</p>;
+  if (!libraryEmpty && (search.value || mediaOnly.value)) {
+    return (
+      <div class="empty">
+        <p>{search.value ? `No posts match “${search.value}”${mediaOnly.value ? " among posts with media" : ""}.` : "No posts with media here."}</p>
+        <button
+          class="press quiet"
+          onClick={() => {
+            search.value = "";
+            mediaOnly.value = false;
+          }}
+        >
+          {search.value ? "Clear search" : "Show every post"}
+        </button>
+      </div>
+    );
   }
+  if (!libraryEmpty) return <p class="empty">{emptyText(view.value)}</p>;
   async function importFile() {
     try {
       const n = await Library.import();

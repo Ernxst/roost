@@ -334,6 +334,7 @@ kbd {
 .sentinel { height: 1px; }
 
 .empty { font: italic 17px var(--serif); color: var(--ink-2); }
+div.empty p { margin: 0 0 14px; }
 .first-run { max-width: 470px; margin: 8vh 0 0; font-style: normal; color: var(--ink); }
 .first-run .lede { margin: 0 0 8px; font: italic 600 34px/1.1 var(--serif); letter-spacing: -0.02em; }
 .first-run p { margin: 0 0 18px; color: var(--ink-2); font-size: 16px; }

@@ -13,6 +13,7 @@ const kinds: [Kind, string][] = [
   ["video", "Videos"],
   ["animated_gif", "GIFs"],
 ];
+const emptyKind: Record<Kind, string> = { all: "photos, videos or GIFs", photo: "photos", video: "videos", animated_gif: "GIFs" };
 
 /** Loads a list once per view, and again when a sync changes the library. */
 function useLoad<T>(load: () => Promise<T[]>) {
@@ -45,7 +46,7 @@ export function WallView() {
         </div>
       </div>
       {marks && tiles.length === 0 ? (
-        <p class="empty">Nothing here yet.</p>
+        <p class="empty">No {emptyKind[kind.value]} among your bookmarks yet.</p>
       ) : (
         <ul class="wall">
           {tiles.map(({ b, m }) => (
