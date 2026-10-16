@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { Library, type MediaUsage, type Result, type Settings } from "./mygo";
-import { announce, count, fail, progress, startSync } from "./state";
+import { announce, count, fail, syncing, startSync } from "./state";
 
 const size = (bytes: number) =>
   bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : bytes < 1e9 ? `${(bytes / 1e6).toFixed(0)} MB` : `${(bytes / 1e9).toFixed(1)} GB`;
@@ -72,8 +72,6 @@ export function SettingsButton() {
   }
 
   const s = settings.value;
-  const phase = progress.value?.phase;
-  const syncing = phase === "loading" || phase === "reading" || phase === "login";
   return (
     <>
       <button class="add settings-button" onClick={open} aria-keyshortcuts="Meta+,">
@@ -119,7 +117,7 @@ export function SettingsButton() {
                   bookmark; a large library takes a few minutes.
                 </p>
                 <div class="row">
-                  <button class="press quiet" disabled={syncing} onClick={() => (dialog.current?.close(), startSync(true))}>
+                  <button class="press quiet" disabled={syncing.value} onClick={() => (dialog.current?.close(), startSync(true))}>
                     Read every bookmark
                   </button>
                 </div>

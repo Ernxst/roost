@@ -23,6 +23,7 @@ import {
   notice,
   opened,
   progress,
+  syncing,
   reload,
   refreshMeta,
   saveNote,
@@ -311,10 +312,6 @@ function SyncStatus() {
 }
 
 function Toolbar() {
-  const busy = useComputed(() => {
-    const ph = progress.value?.phase;
-    return ph === "loading" || ph === "reading" || ph === "login";
-  });
   return (
     <header class="toolbar">
       <SearchBox />
@@ -324,7 +321,7 @@ function Toolbar() {
       </button>
       <div class="sync">
         <SyncStatus />
-        <button class="press" disabled={busy.value || isFixtureMode} onClick={() => startSync(false)}>
+        <button class="press" disabled={syncing.value || isFixtureMode} onClick={() => startSync(false)}>
           Sync
         </button>
       </div>
