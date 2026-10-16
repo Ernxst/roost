@@ -237,6 +237,7 @@ function Rail() {
             value={name.value}
             onInput={(e) => (name.value = e.currentTarget.value)}
             onKeyDown={(e) => e.key === "Escape" && (adding.value = false)}
+            onBlur={() => !name.value.trim() && (adding.value = false)}
             placeholder="Name it…"
             autoComplete="off"
             aria-invalid={error.value ? "true" : undefined}
@@ -387,6 +388,7 @@ function SaveSearch() {
         value={name.value}
         onInput={(e) => ((name.value = e.currentTarget.value), (error.value = ""))}
         onKeyDown={(e) => e.key === "Escape" && (naming.value = false)}
+        onBlur={() => !name.value.trim() && (naming.value = false)}
         placeholder="Name this search…"
         autoComplete="off"
         aria-invalid={error.value ? "true" : undefined}

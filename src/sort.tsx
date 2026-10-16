@@ -180,6 +180,7 @@ export function SortMode() {
                   value={name.value}
                   onInput={(e) => (name.value = e.currentTarget.value)}
                   onKeyDown={(e) => e.key === "Escape" && (naming.value = false)}
+                  onBlur={() => !name.value.trim() && (naming.value = false)}
                   placeholder="New collection…"
                   autoComplete="off"
                   ref={nameField}
