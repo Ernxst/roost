@@ -115,8 +115,15 @@ export function MediaGrid({ media, playable = false }: { media: Media[]; playabl
           <figure key={m.thumb} class="frame" style={style}>
             <img src={cached(`${m.thumb}?name=small`)} alt="" loading="lazy" />
             {m.kind !== "photo" && (
-              <span class="badge" aria-label={m.kind === "video" ? "Video" : "GIF"}>
-                {m.kind === "video" ? "▶" : "GIF"}
+              <span class="badge">
+                {m.kind === "video" ? (
+                  <>
+                    <span aria-hidden="true">▶</span>
+                    <span class="sr-only">Video</span>
+                  </>
+                ) : (
+                  "GIF"
+                )}
               </span>
             )}
           </figure>

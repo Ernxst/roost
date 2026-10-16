@@ -609,10 +609,10 @@ function Sheet() {
       </div>
       <div class="byline big">
         <Avatar src={t.authorAvatar} size={40} />
-        <span class="who">
+        <h2 class="who">
           <span class="name">{t.authorName}</span>
           <span class="handle">@{t.authorHandle}</span>
-        </span>
+        </h2>
       </div>
       {isFixtureMode ? (
         <>

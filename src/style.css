@@ -375,7 +375,7 @@ kbd {
 .byline .handle { max-width: 100%; font: 11px var(--mono); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .byline time { font: 11px var(--mono); color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .byline.big .name { font-size: 19px; }
-.byline.big .who { flex-direction: column; gap: 2px; }
+.byline.big .who { flex-direction: column; gap: 2px; margin: 0; font: inherit; }
 
 .avatar {
   flex: none;

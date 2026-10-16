@@ -69,9 +69,7 @@ function CardBody({ b }: { b: Bookmark }) {
       {b.note && <p class="note-preview">{b.note}</p>}
       <Stamps b={b} />
       {b.removedAt && (
-        <span class="gone-stamp" aria-label="Gone from X">
-          gone from X
-        </span>
+        <span class="gone-stamp">gone from X</span>
       )}
     </article>
   );
