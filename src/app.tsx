@@ -8,10 +8,12 @@ import {
   collections,
   createCollection,
   cursor,
+  find,
   items,
   loading,
   loadMore,
   manual,
+  markOpened,
   mediaOnly,
   opened,
   progress,
@@ -26,9 +28,11 @@ import {
   view,
   type View,
 } from "./state";
-import { Avatar, MediaGrid, openExternal, Quoted, relative, shortDate, Text } from "./tweet";
+import { Card, ink } from "./card";
+import { RevisitView } from "./revisit";
+import { SortMode } from "./sort";
+import { Avatar, MediaGrid, openExternal, Quoted, relative, Text } from "./tweet";
 
-const ink = (hue: number) => `oklch(0.56 0.14 ${hue})`;
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
 
 export function App() {
@@ -41,7 +45,7 @@ export function App() {
       <Rail />
       <main class="desk" id="feed" tabIndex={-1}>
         <Toolbar />
-        <Feed />
+        {view.value.kind === "sort" ? <SortMode /> : view.value.kind === "revisit" ? <RevisitView /> : <Feed />}
       </main>
       <Sheet />
       <div class="sr-only" role="status" aria-live="polite">
@@ -112,6 +116,12 @@ function Rail() {
         <RailItem target={{ kind: "all" }} label="Everything" count={s?.total} />
         <RailItem target={{ kind: "unsorted" }} label="Unsorted" count={s?.unsorted} />
         {!!s?.removed && <RailItem target={{ kind: "removed" }} label="Gone from X" count={s.removed} />}
+      </ul>
+
+      <h2 class="rail-heading">Rituals</h2>
+      <ul class="rail-list">
+        <RailItem target={{ kind: "sort" }} label="Sort the unsorted" count={s?.toSort} />
+        <RailItem target={{ kind: "revisit" }} label="Revisit" />
       </ul>
 
       <h2 class="rail-heading">Collections</h2>
@@ -346,6 +356,10 @@ function viewTitle(v: View): string {
       return "Gone from X";
     case "collection":
       return collections.value.find((c) => c.id === v.id)?.name ?? "Collection";
+    case "sort":
+      return "Sorting";
+    case "revisit":
+      return "Revisit";
     case "author": {
       const a = authors.value.find((a) => a.handle === v.handle);
       return a?.name || `@${v.handle}`;
@@ -454,62 +468,9 @@ function Empty() {
   );
 }
 
-function Stamps({ b }: { b: Bookmark }) {
-  const byId = new Map(collections.value.map((c) => [c.id, c]));
-  const cs = b.collections.map((id) => byId.get(id)).filter((c): c is Collection => !!c);
-  if (cs.length === 0) return null;
-  return (
-    <ul class="stamps" aria-label="Collections">
-      {cs.map((c, i) => (
-        <li key={c.id} class="stamp" style={{ "--hue": ink(c.hue), "--tilt": `${((c.id * 7 + i * 3) % 5) - 2}deg` }}>
-          {c.name}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Card({ b }: { b: Bookmark }) {
-  const t = b.tweet;
-  const ref = useRef<HTMLElement>(null);
-  const active = cursor.value === t.id;
-  useEffect(() => {
-    if (active) ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [active]);
-  return (
-    <article
-      ref={ref}
-      class={`card${active ? " cursor" : ""}${b.removedAt ? " gone" : ""}`}
-      aria-labelledby={`by-${t.id}`}
-    >
-      <header class="byline">
-        <Avatar src={t.authorAvatar} />
-        <span class="who" id={`by-${t.id}`}>
-          <span class="name">{t.authorName}</span>
-          <span class="handle">@{t.authorHandle}</span>
-        </span>
-        <time dateTime={t.createdAt}>{shortDate(t.createdAt)}</time>
-      </header>
-      <button class="open" onClick={() => ((opened.value = t.id), (cursor.value = t.id))}>
-        <span class="sr-only">Open post by {t.authorName}</span>
-      </button>
-      {t.text && <Text tweet={t} />}
-      <MediaGrid media={t.media} />
-      {t.quoted && <Quoted tweet={t.quoted} />}
-      {b.note && <p class="note-preview">{b.note}</p>}
-      <Stamps b={b} />
-      {b.removedAt && (
-        <span class="gone-stamp" aria-label="Gone from X">
-          gone from X
-        </span>
-      )}
-    </article>
-  );
-}
-
 function Sheet() {
   const id = opened.value;
-  const b = items.value.find((x) => x.tweet.id === id);
+  const b = find(id);
   const panel = useRef<HTMLElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
   const note = useSignal("");
@@ -525,6 +486,7 @@ function Sheet() {
   });
   useEffect(() => {
     note.value = b?.note ?? "";
+    if (b) markOpened(b);
   }, [b?.tweet.id]);
 
   if (!b) return null;
@@ -609,6 +571,7 @@ function useKeyboard() {
         return;
       }
       if (typing(e)) return;
+      if (view.value.kind === "sort") return;
       const list = items.value;
       const at = list.findIndex((b) => b.tweet.id === cursor.value);
       const current = at >= 0 ? list[at] : undefined;

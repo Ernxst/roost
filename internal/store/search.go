@@ -13,7 +13,8 @@ import (
 //	from:handle            posts by that author
 //	has:media|photo|video|gif|link|quote|note
 //	in:name, -in:name      in, or not in, a collection; in:none for none
-//	is:gone                bookmarks removed on X
+//	is:gone|opened|unopened|aside   removed on X, opened in roost or not,
+//	                       set aside while sorting
 //	before:2025-01-31, after:2025-01-01   by the date of the post
 //
 // A leading "-" negates a word or a has: operator, and a value with spaces
@@ -81,10 +82,18 @@ func (s *search) operator(key, value string, neg bool) bool {
 		add(`EXISTS (SELECT 1 FROM collection_items ci JOIN collections c ON c.id = ci.collection_id
 			WHERE ci.tweet_id = b.tweet_id AND c.name = ? COLLATE NOCASE)`, value)
 	case "is":
-		if !strings.EqualFold(value, "gone") {
+		switch strings.ToLower(value) {
+		case "gone":
+			s.gone = !neg
+		case "opened":
+			add("b.opened_at IS NOT NULL")
+		case "unopened":
+			add("b.opened_at IS NULL")
+		case "aside":
+			add("b.aside_at IS NOT NULL")
+		default:
 			return false
 		}
-		s.gone = !neg
 	case "before", "after":
 		day, err := time.ParseInLocation("2006-01-02", value, time.Local)
 		if err != nil {

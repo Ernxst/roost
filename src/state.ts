@@ -1,12 +1,14 @@
 import { batch, effect, signal } from "@preact/signals";
-import { events, Library, type Author, type Bookmark, type Collection, type Progress, type Query, type Stats } from "./mygo";
+import { events, Library, type Author, type Bookmark, type Collection, type Progress, type Query, type Revisit, type Stats } from "./mygo";
 
 export type View =
   | { kind: "all" }
   | { kind: "unsorted" }
   | { kind: "removed" }
   | { kind: "collection"; id: number }
-  | { kind: "author"; handle: string };
+  | { kind: "author"; handle: string }
+  | { kind: "sort" }
+  | { kind: "revisit" };
 
 const PAGE = 60;
 
@@ -37,9 +39,10 @@ export function announce(text: string) {
 function query(offset: number): Query {
   const v = view.value;
   return {
-    search: search.value,
+    // The sorting queue is unsorted posts not set aside.
+    search: v.kind === "sort" ? `-is:aside ${search.value}` : search.value,
     mediaOnly: mediaOnly.value,
-    collection: v.kind === "collection" ? v.id : v.kind === "unsorted" ? -1 : 0,
+    collection: v.kind === "collection" ? v.id : v.kind === "unsorted" || v.kind === "sort" ? -1 : 0,
     author: v.kind === "author" ? v.handle : "",
     removed: v.kind === "removed",
     offset,
@@ -50,6 +53,7 @@ function query(offset: number): Query {
 let generation = 0;
 
 export async function reload() {
+  if (view.value.kind === "revisit") return loadRevisit();
   const g = ++generation;
   loading.value = true;
   try {
@@ -108,8 +112,59 @@ effect(() => {
   }
 });
 
+/** The shelves of the Revisit view. */
+export const revisit = signal<Revisit | null>(null);
+
+export async function loadRevisit() {
+  try {
+    revisit.value = await Library.revisit(6);
+  } catch (err) {
+    announce(String(err));
+  }
+}
+
+/** Finds a loaded bookmark, whether it is in the feed or on a Revisit shelf. */
+export function find(id: string | null): Bookmark | undefined {
+  if (!id) return undefined;
+  const r = revisit.value;
+  const all = [items.value, r?.onThisDay ?? [], r?.unopened ?? [], r?.random ?? []];
+  for (const list of all) {
+    const b = list.find((x) => x.tweet.id === id);
+    if (b) return b;
+  }
+}
+
 function patch(id: string, fn: (b: Bookmark) => Bookmark) {
-  items.value = items.value.map((b) => (b.tweet.id === id ? fn(b) : b));
+  const each = (list: Bookmark[]) => list.map((b) => (b.tweet.id === id ? fn(b) : b));
+  batch(() => {
+    items.value = each(items.value);
+    const r = revisit.value;
+    if (r) revisit.value = { onThisDay: each(r.onThisDay), unopened: each(r.unopened), random: each(r.random) };
+  });
+}
+
+export function markOpened(b: Bookmark) {
+  if (b.openedAt) return;
+  patch(b.tweet.id, (x) => ({ ...x, openedAt: new Date().toISOString() }));
+  Library.markOpened(b.tweet.id).catch((err) => announce(String(err)));
+}
+
+export async function setAside(b: Bookmark, aside: boolean) {
+  patch(b.tweet.id, (x) => ({ ...x, asideAt: aside ? new Date().toISOString() : null }));
+  await Library.setAside(b.tweet.id, aside);
+  refreshMeta();
+}
+
+/** Files a post into a collection, or takes it out, without the toggle's guesswork. */
+export async function file(b: Bookmark, collectionID: number, inside: boolean) {
+  patch(b.tweet.id, (x) => ({
+    ...x,
+    collections: inside
+      ? [...new Set([...x.collections, collectionID])]
+      : x.collections.filter((c) => c !== collectionID),
+  }));
+  await Library.setInCollection(b.tweet.id, collectionID, inside);
+  refreshMeta();
 }
 
 export async function toggleCollection(b: Bookmark, collectionID: number) {

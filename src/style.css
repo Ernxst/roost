@@ -610,3 +610,69 @@ kbd {
   --app-region: no-drag;
 }
 .save-search input::placeholder { font-style: italic; color: var(--ink-3); }
+
+/* ---- Sorting ---- */
+
+.sorter, .revisit { padding: 8px 28px 80px; }
+.sort-table {
+  display: grid;
+  grid-template-columns: minmax(0, 620px) minmax(220px, 280px);
+  gap: 36px;
+  align-items: start;
+}
+.card.big { padding: 22px 26px 22px; font-size: 1.08em; animation: deal 220ms var(--ease); }
+.card.big:hover { translate: none; }
+.card.big .press.link { margin: 18px 0 0; gap: 8px; }
+@keyframes deal {
+  from { opacity: 0; translate: 0 10px; rotate: -0.6deg; }
+}
+@media (prefers-reduced-motion: reduce) { .card.big { animation: none; } }
+
+.sort-keys { position: sticky; top: calc(var(--titlebar) + 12px); display: grid; gap: 10px; }
+.sort-keys .hints-title { margin: 0; }
+.bins { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.bin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 5px 10px 5px 8px;
+  border: 0;
+  border-left: 4px solid var(--hue);
+  border-radius: 3px;
+  background: none;
+  font-size: 15px;
+  text-align: left;
+  transition: background 120ms var(--ease);
+}
+@media (hover: hover) { .bin:hover { background: var(--rule); } }
+.bin[aria-pressed="true"] { background: color-mix(in oklch, var(--hue) 16%, transparent); }
+.bin span { flex: 1; }
+.press kbd, .add kbd { color: inherit; opacity: 0.7; margin-right: 6px; border-color: currentColor; }
+.sort-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.sort-keys .hint { font-size: 13px; }
+
+@media (max-width: 980px) {
+  .sort-table { grid-template-columns: minmax(0, 1fr); }
+  .sort-keys { position: static; }
+}
+
+/* ---- Revisit ---- */
+
+.shelf { margin: 0 0 38px; }
+.shelf-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+.shelf-head h2 { margin: 0; font: 600 20px var(--serif); }
+.shelf-head .press { margin-left: auto; }
+.shelf-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(280px, 320px);
+  gap: 22px;
+  align-items: start;
+  overflow-x: auto;
+  padding: 4px 4px 18px;
+  scroll-snap-type: x proximity;
+}
+.shelf-row > .card { scroll-snap-align: start; }
+.sort-keys .add { justify-self: start; margin: 0; }

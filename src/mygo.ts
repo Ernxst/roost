@@ -17,6 +17,8 @@ export interface Bookmark {
   collections: number[];
   firstSeenAt: string;
   removedAt: string | null;
+  openedAt: string | null;
+  asideAt: string | null;
 }
 
 export interface Collection {
@@ -67,10 +69,17 @@ export interface Query {
   limit: number;
 }
 
+export interface Revisit {
+  onThisDay: Bookmark[];
+  unopened: Bookmark[];
+  random: Bookmark[];
+}
+
 export interface Stats {
   total: number;
   removed: number;
   unsorted: number;
+  toSort: number;
   lastSync: Sync | null;
 }
 
@@ -131,9 +140,27 @@ export const Library = {
   list(q: Query): Promise<ListResult> {
     return call("Library.List", q);
   },
+  /** MarkOpened records that the user opened a bookmark in roost. */
+  markOpened(tweetID: string): Promise<void> {
+    return call("Library.MarkOpened", tweetID);
+  },
   /** Open opens a URL in the default browser. */
   open(url: string): Promise<void> {
     return call("Library.Open", url);
+  },
+  /**
+   * Revisit picks bookmarks worth seeing again: posts from this day in
+   * earlier years, never-opened ones and a random handful.
+   */
+  revisit(n: number): Promise<Revisit> {
+    return call("Library.Revisit", n);
+  },
+  /**
+   * SetAside takes a bookmark out of the sorting queue without filing it, or
+   * puts it back.
+   */
+  setAside(tweetID: string, aside: boolean): Promise<void> {
+    return call("Library.SetAside", tweetID, aside);
   },
   /** SetInCollection adds a bookmark to a collection or takes it out. */
   setInCollection(tweetID: string, collectionID: number, in_: boolean): Promise<void> {

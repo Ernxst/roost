@@ -117,6 +117,35 @@ func (l *Library) SetNote(tweetID, note string) error {
 	return s.SetNote(tweetID, note)
 }
 
+// MarkOpened records that the user opened a bookmark in roost.
+func (l *Library) MarkOpened(tweetID string) error {
+	s, err := l.store()
+	if err != nil {
+		return err
+	}
+	return s.MarkOpened(tweetID, time.Now())
+}
+
+// SetAside takes a bookmark out of the sorting queue without filing it, or
+// puts it back.
+func (l *Library) SetAside(tweetID string, aside bool) error {
+	s, err := l.store()
+	if err != nil {
+		return err
+	}
+	return s.SetAside(tweetID, aside, time.Now())
+}
+
+// Revisit picks bookmarks worth seeing again: posts from this day in
+// earlier years, never-opened ones and a random handful.
+func (l *Library) Revisit(n int) (store.Revisit, error) {
+	s, err := l.store()
+	if err != nil {
+		return store.Revisit{}, err
+	}
+	return s.Revisit(time.Now(), n)
+}
+
 // Sync starts bringing the library up to date with X and returns at once;
 // SyncProgress reports how it goes. A full sync reads every bookmark and
 // marks the ones gone from X as removed.
@@ -142,7 +171,7 @@ func (l *Library) Sync(full bool) error {
 		page := openSyncPage(l.main)
 		defer page.Close()
 		_, err := xsync.Run(context.Background(), page, s, xsync.Options{
-			Full:     full,
+			Full: full,
 			Progress: func(p xsync.Progress) {
 				log.Printf("sync: %s, %d seen, %d new, %d removed %s", p.Phase, p.Seen, p.Added, p.Removed, p.Message)
 				SyncProgress.Broadcast(p)

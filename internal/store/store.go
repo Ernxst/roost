@@ -68,6 +68,9 @@ CREATE TABLE syncs (
 );
 `, `
 ALTER TABLE collections ADD COLUMN query TEXT NOT NULL DEFAULT '';
+`, `
+ALTER TABLE bookmarks ADD COLUMN opened_at INTEGER;
+ALTER TABLE bookmarks ADD COLUMN aside_at INTEGER;
 `}
 
 // Open opens the library at path, creating and migrating it as needed.
@@ -187,6 +190,8 @@ type Bookmark struct {
 	Collections []int64      `json:"collections"`
 	FirstSeenAt time.Time    `json:"firstSeenAt"`
 	RemovedAt   *time.Time   `json:"removedAt"`
+	OpenedAt    *time.Time   `json:"openedAt"`
+	AsideAt     *time.Time   `json:"asideAt"`
 }
 
 type ListResult struct {
@@ -247,31 +252,36 @@ func (s *Store) List(q Query) (ListResult, error) {
 	if limit <= 0 {
 		limit = 60
 	}
+	var err error
+	res.Items, err = s.selectBookmarks(cond, args, "ORDER BY b.sort_index DESC LIMIT ? OFFSET ?", limit, q.Offset)
+	return res, err
+}
+
+// selectBookmarks reads the bookmarks matching cond, a condition over
+// bookmarks b and tweets t, followed by tail (ORDER BY and LIMIT).
+func (s *Store) selectBookmarks(cond string, args []any, tail string, tailArgs ...any) ([]Bookmark, error) {
 	rows, err := s.db.Query(`
-		SELECT t.data, b.note, b.first_seen_at, b.removed_at,
+		SELECT t.data, b.note, b.first_seen_at, b.removed_at, b.opened_at, b.aside_at,
 			(SELECT group_concat(collection_id) FROM collection_items ci WHERE ci.tweet_id = b.tweet_id)
-		FROM `+from+` WHERE `+cond+` ORDER BY b.sort_index DESC LIMIT ? OFFSET ?`,
-		append(args, limit, q.Offset)...)
+		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id WHERE `+cond+` `+tail,
+		append(append([]any{}, args...), tailArgs...)...)
 	if err != nil {
-		return res, fmt.Errorf("list bookmarks: %w", err)
+		return nil, fmt.Errorf("list bookmarks: %w", err)
 	}
 	defer rows.Close()
-	res.Items = []Bookmark{}
+	out := []Bookmark{}
 	for rows.Next() {
 		var data, note string
 		var firstSeen int64
-		var removed sql.NullInt64
+		var removed, opened, aside sql.NullInt64
 		var cols sql.NullString
-		if err := rows.Scan(&data, &note, &firstSeen, &removed, &cols); err != nil {
-			return res, err
+		if err := rows.Scan(&data, &note, &firstSeen, &removed, &opened, &aside, &cols); err != nil {
+			return nil, err
 		}
-		b := Bookmark{Note: note, FirstSeenAt: time.UnixMilli(firstSeen), Collections: []int64{}}
+		b := Bookmark{Note: note, FirstSeenAt: time.UnixMilli(firstSeen), Collections: []int64{},
+			RemovedAt: optTime(removed), OpenedAt: optTime(opened), AsideAt: optTime(aside)}
 		if err := json.Unmarshal([]byte(data), &b.Tweet); err != nil {
-			return res, err
-		}
-		if removed.Valid {
-			at := time.UnixMilli(removed.Int64)
-			b.RemovedAt = &at
+			return nil, err
 		}
 		for _, c := range strings.Split(cols.String, ",") {
 			var id int64
@@ -279,9 +289,63 @@ func (s *Store) List(q Query) (ListResult, error) {
 				b.Collections = append(b.Collections, id)
 			}
 		}
-		res.Items = append(res.Items, b)
+		out = append(out, b)
 	}
-	return res, rows.Err()
+	return out, rows.Err()
+}
+
+func optTime(v sql.NullInt64) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	t := time.UnixMilli(v.Int64)
+	return &t
+}
+
+// MarkOpened records that the user opened the bookmark in roost.
+func (s *Store) MarkOpened(tweetID string, now time.Time) error {
+	_, err := s.db.Exec(`UPDATE bookmarks SET opened_at = ? WHERE tweet_id = ?`, now.UnixMilli(), tweetID)
+	return err
+}
+
+// SetAside takes a bookmark out of the sorting queue, or puts it back,
+// without filing it.
+func (s *Store) SetAside(tweetID string, aside bool, now time.Time) error {
+	var at any
+	if aside {
+		at = now.UnixMilli()
+	}
+	_, err := s.db.Exec(`UPDATE bookmarks SET aside_at = ? WHERE tweet_id = ?`, at, tweetID)
+	return err
+}
+
+// Revisit is a handful of bookmarks worth seeing again.
+type Revisit struct {
+	// OnThisDay holds posts written on today's date in earlier years.
+	OnThisDay []Bookmark `json:"onThisDay"`
+	// Unopened holds bookmarks never opened in roost, at random.
+	Unopened []Bookmark `json:"unopened"`
+	// Random holds any current bookmarks, at random.
+	Random []Bookmark `json:"random"`
+}
+
+func (s *Store) Revisit(now time.Time, n int) (Revisit, error) {
+	var r Revisit
+	var err error
+	day := now.Format("01-02")
+	r.OnThisDay, err = s.selectBookmarks(
+		`b.removed_at IS NULL AND strftime('%m-%d', t.created_at / 1000, 'unixepoch', 'localtime') = ?
+			AND strftime('%Y', t.created_at / 1000, 'unixepoch', 'localtime') < ?`,
+		[]any{day, now.Format("2006")}, "ORDER BY t.created_at DESC LIMIT ?", n)
+	if err != nil {
+		return r, err
+	}
+	r.Unopened, err = s.selectBookmarks("b.removed_at IS NULL AND b.opened_at IS NULL", nil, "ORDER BY random() LIMIT ?", n)
+	if err != nil {
+		return r, err
+	}
+	r.Random, err = s.selectBookmarks("b.removed_at IS NULL", nil, "ORDER BY random() LIMIT ?", n)
+	return r, err
 }
 
 type Collection struct {
@@ -434,9 +498,11 @@ func (s *Store) RecordSync(r Sync) error {
 }
 
 type Stats struct {
-	Total    int   `json:"total"`
-	Removed  int   `json:"removed"`
-	Unsorted int   `json:"unsorted"`
+	Total    int `json:"total"`
+	Removed  int `json:"removed"`
+	Unsorted int `json:"unsorted"`
+	// ToSort counts unsorted bookmarks not set aside: the sorting queue.
+	ToSort   int   `json:"toSort"`
 	LastSync *Sync `json:"lastSync"`
 }
 
@@ -444,8 +510,9 @@ func (s *Store) Stats() (Stats, error) {
 	var st Stats
 	err := s.db.QueryRow(`
 		SELECT count(*) FILTER (WHERE removed_at IS NULL), count(*) FILTER (WHERE removed_at IS NOT NULL),
-			count(*) FILTER (WHERE removed_at IS NULL AND NOT EXISTS (SELECT 1 FROM collection_items ci WHERE ci.tweet_id = bookmarks.tweet_id))
-		FROM bookmarks`).Scan(&st.Total, &st.Removed, &st.Unsorted)
+			count(*) FILTER (WHERE removed_at IS NULL AND NOT EXISTS (SELECT 1 FROM collection_items ci WHERE ci.tweet_id = bookmarks.tweet_id)),
+			count(*) FILTER (WHERE removed_at IS NULL AND aside_at IS NULL AND NOT EXISTS (SELECT 1 FROM collection_items ci WHERE ci.tweet_id = bookmarks.tweet_id))
+		FROM bookmarks`).Scan(&st.Total, &st.Removed, &st.Unsorted, &st.ToSort)
 	if err != nil {
 		return st, err
 	}

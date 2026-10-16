@@ -198,3 +198,39 @@ func TestSearchOperators(t *testing.T) {
 		t.Errorf("collections = %+v, want the smart one last with 2 posts", cols)
 	}
 }
+
+func TestOpenedAsideAndRevisit(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Date(2026, 10, 16, 9, 0, 0, 0, time.Local)
+	old := entry("1", 10, "from a year ago", false)
+	old.Tweet.CreatedAt = time.Date(2025, 10, 16, 20, 0, 0, 0, time.Local)
+	s.Ingest([]xparse.Entry{old, entry("2", 20, "b", false), entry("3", 30, "c", false)}, now)
+
+	s.MarkOpened("2", now)
+	s.SetAside("3", true, now)
+	if got := ids(t, s, Query{Search: "is:unopened"}); !equal(got, []string{"3", "1"}) {
+		t.Errorf("is:unopened = %v", got)
+	}
+	if got := ids(t, s, Query{Collection: Unsorted, Search: "-is:aside"}); !equal(got, []string{"2", "1"}) {
+		t.Errorf("sorting queue = %v", got)
+	}
+	s.SetAside("3", false, now)
+	if got := ids(t, s, Query{Search: "is:aside"}); len(got) != 0 {
+		t.Errorf("is:aside after putting back = %v", got)
+	}
+
+	r, err := s.Revisit(now, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.OnThisDay) != 1 || r.OnThisDay[0].Tweet.ID != "1" {
+		t.Errorf("on this day = %+v", r.OnThisDay)
+	}
+	if len(r.Unopened) != 2 || len(r.Random) != 3 {
+		t.Errorf("unopened %d, random %d; want 2 and 3", len(r.Unopened), len(r.Random))
+	}
+}
