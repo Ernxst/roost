@@ -1,5 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
+import type { ComponentChildren } from "preact";
 import { Stamps } from "./card";
 import { Library, type Bookmark, type Duplicates, type Media } from "./mygo";
 import { fail, openPost, stats } from "./state";
@@ -81,9 +82,13 @@ function Tile({ b, m }: { b: Bookmark; m: Media }) {
   );
 }
 
-const reasons: Record<string, (key: string) => string> = {
+const reasons: Record<string, (key: string) => ComponentChildren> = {
   post: () => "The same post",
-  link: (key) => `The same page · ${key.split("?")[0]}`,
+  link: (key) => (
+    <>
+      The same page · <span class="dupe-url">{key.split("?")[0]}</span>
+    </>
+  ),
   image: () => "The same picture",
 };
 

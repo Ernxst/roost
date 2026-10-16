@@ -999,6 +999,7 @@ mark { background: color-mix(in oklch, oklch(0.88 0.15 95) 70%, transparent); co
 .dupes { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; max-width: 760px; }
 .dupe { padding: 14px 16px 16px; border-radius: 6px; background: var(--card); box-shadow: 0 0 0 1px var(--rule); }
 .dupe-reason { margin: 0 0 8px; font: 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); overflow-wrap: anywhere; }
+.dupe-url { text-transform: none; letter-spacing: 0; }
 .dupe ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .dupe li { display: flex; align-items: center; gap: 10px; }
 .dupe .stamps { margin: 0; flex: none; }
