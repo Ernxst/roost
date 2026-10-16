@@ -439,6 +439,25 @@ func (l *Library) AllHighlights() ([]store.Highlight, error) {
 	return s.AllHighlights()
 }
 
+// Wall returns every bookmark with photos, videos or GIFs.
+func (l *Library) Wall() ([]store.Bookmark, error) {
+	s, err := l.store()
+	if err != nil {
+		return nil, err
+	}
+	return s.Wall()
+}
+
+// Duplicates returns the sets of bookmarks that share a post, a link or an
+// image.
+func (l *Library) Duplicates() ([]store.Duplicates, error) {
+	s, err := l.store()
+	if err != nil {
+		return nil, err
+	}
+	return s.FindDuplicates()
+}
+
 // Sync starts bringing the library up to date with X and returns at once;
 // SyncProgress reports how it goes. A full sync reads every bookmark and
 // marks the ones gone from X as removed.

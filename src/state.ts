@@ -9,7 +9,9 @@ export type View =
   | { kind: "author"; handle: string }
   | { kind: "sort" }
   | { kind: "revisit" }
-  | { kind: "highlights" };
+  | { kind: "highlights" }
+  | { kind: "wall" }
+  | { kind: "duplicates" };
 
 const PAGE = 60;
 
@@ -56,6 +58,8 @@ let generation = 0;
 export async function reload() {
   if (view.value.kind === "revisit") return loadRevisit();
   if (view.value.kind === "highlights") return loadHighlights();
+  // The wall and duplicates load their own bookmarks.
+  if (view.value.kind === "wall" || view.value.kind === "duplicates") return;
   const g = ++generation;
   loading.value = true;
   try {

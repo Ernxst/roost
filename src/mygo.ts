@@ -30,6 +30,12 @@ export interface Collection {
   count: number;
 }
 
+export interface Duplicates {
+  reason: string;
+  key: string;
+  bookmarks: Bookmark[];
+}
+
 export interface Highlight {
   id: number;
   tweetId: string;
@@ -198,6 +204,13 @@ export const Library = {
     return call("Library.DeleteHighlight", id);
   },
   /**
+   * Duplicates returns the sets of bookmarks that share a post, a link or an
+   * image.
+   */
+  duplicates(): Promise<Duplicates[]> {
+    return call("Library.Duplicates");
+  },
+  /**
    * Export writes the library as Markdown notes. With choose set, or before
    * the first export, it asks for a folder; otherwise it writes to the folder
    * used last time.
@@ -303,6 +316,10 @@ export const Library = {
   },
   updateCollection(id: number, name: string, hue: number, query: string): Promise<void> {
     return call("Library.UpdateCollection", id, name, hue, query);
+  },
+  /** Wall returns every bookmark with photos, videos or GIFs. */
+  wall(): Promise<Bookmark[]> {
+    return call("Library.Wall");
   },
 } as const;
 

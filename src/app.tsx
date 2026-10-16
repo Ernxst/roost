@@ -37,6 +37,7 @@ import { SuggestedChips, useSuggestions } from "./suggest";
 import { Thread } from "./thread";
 import { Links, Reader } from "./links";
 import { HighlightList, Highlighter, HighlightsView, usePostHighlights } from "./highlights";
+import { DuplicatesView, WallView } from "./wall";
 import { Avatar, MediaGrid, openExternal, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
@@ -57,6 +58,10 @@ export function App() {
           <RevisitView />
         ) : view.value.kind === "highlights" ? (
           <HighlightsView />
+        ) : view.value.kind === "wall" ? (
+          <WallView />
+        ) : view.value.kind === "duplicates" ? (
+          <DuplicatesView />
         ) : (
           <Feed />
         )}
@@ -161,6 +166,8 @@ function Rail() {
         <RailItem target={{ kind: "sort" }} label="Sort the unsorted" count={s?.toSort} disabled={isFixtureMode} />
         <RailItem target={{ kind: "revisit" }} label="Revisit" disabled={isFixtureMode} />
         <RailItem target={{ kind: "highlights" }} label="Highlights" disabled={isFixtureMode} />
+        <RailItem target={{ kind: "wall" }} label="Media wall" disabled={isFixtureMode} />
+        <RailItem target={{ kind: "duplicates" }} label="Duplicates" disabled={isFixtureMode} />
       </ul>
 
       <h2 class="rail-heading">Collections</h2>
@@ -406,6 +413,10 @@ function viewTitle(v: View): string {
       return "Revisit";
     case "highlights":
       return "Highlights";
+    case "wall":
+      return "Media wall";
+    case "duplicates":
+      return "Duplicates";
     case "author": {
       const a = authors.value.find((a) => a.handle === v.handle);
       return a?.name || `@${v.handle}`;

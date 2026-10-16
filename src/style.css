@@ -859,3 +859,67 @@ mark { background: color-mix(in oklch, oklch(0.88 0.15 95) 70%, transparent); co
 .bin[data-suggested] { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--hue) 45%, transparent); }
 .bin-hint { flex: none !important; font: 10px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
 .setting .path { padding: 0; border: 0; background: none; font: inherit; color: var(--ink-2); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---- Media wall ---- */
+
+.wall-view, .dupes-view { padding: 8px 28px 80px; }
+.wall-kinds { display: flex; gap: 6px; margin-left: auto; }
+.wall { list-style: none; margin: 0; padding: 0; columns: 5 180px; column-gap: 8px; }
+.wall li { break-inside: avoid; margin: 0 0 8px; }
+.tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--rule);
+  cursor: zoom-in;
+}
+.tile img { display: block; width: 100%; height: 100%; object-fit: cover; outline: 1px solid var(--image-outline); outline-offset: -1px; }
+.tile.gone img { filter: grayscale(1) contrast(0.9); }
+.tile .badge { left: 6px; bottom: auto; top: 6px; }
+.tile-caption {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 18px 8px 6px;
+  background: linear-gradient(transparent, oklch(0 0 0 / 0.6));
+  color: #fff;
+  font: 11px var(--mono);
+  text-align: left;
+  opacity: 0;
+  transition: opacity 140ms var(--ease);
+}
+.tile:focus-visible .tile-caption { opacity: 1; }
+@media (hover: hover) { .tile:hover .tile-caption { opacity: 1; } }
+
+/* ---- Duplicates ---- */
+
+.dupes { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; max-width: 760px; }
+.dupe { padding: 14px 16px 16px; border-radius: 6px; background: var(--card); box-shadow: 0 0 0 1px var(--rule); }
+.dupe-reason { margin: 0 0 8px; font: 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); overflow-wrap: anywhere; }
+.dupe ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.dupe li { display: flex; align-items: center; gap: 10px; }
+.dupe .stamps { margin: 0; flex: none; }
+.dupe-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 4px 8px;
+  margin: 0 -8px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) { .dupe-row:hover { background: var(--rule); } }
+.dupe-text { flex: 1; min-width: 0; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dupe-text .name { font-weight: 600; }
+.dupe-row time { font: 11px var(--mono); color: var(--ink-3); }
