@@ -605,7 +605,7 @@ div.empty p { margin: 0 0 14px; }
 .press.link { margin-bottom: 8px; }
 
 .file-under { border: 0; margin: 26px 0 0; padding: 0; }
-.file-under legend, .note .legend, .thread .legend, .links .legend, .highlight-list .legend {
+.file-under legend, .note .legend, .thread .legend, .links .legend, .highlight-list .legend, .keys .legend {
   display: block;
   width: 100%;
   padding: 0;
@@ -1112,6 +1112,16 @@ mark { background: var(--highlight); color: inherit; padding: 0 1px; border-radi
 
 .rail-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; }
 .whats-new { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---- Keys ---- */
+
+.keys { width: min(420px, 92vw); }
+.keys-group { margin: 0 0 18px; }
+.keys-group:last-child { margin-bottom: 0; }
+.keys dl { display: grid; gap: 6px; margin: 0; }
+.keys dl div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); align-items: baseline; gap: 12px; }
+.keys dt { white-space: nowrap; font: 11px var(--mono); color: var(--ink-3); }
+.keys dd { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
 .whats-new .version { color: var(--ink-3); }
 .new-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .changelog { width: min(560px, 92vw); max-height: min(720px, 86vh); overscroll-behavior: contain; }
