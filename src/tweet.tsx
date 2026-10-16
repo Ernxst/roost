@@ -74,8 +74,11 @@ function Linked({
     out.push(mark(text.slice(last, m.index)));
     const [token, url, mention, tag] = m;
     if (url) {
-      const l = links.get(url);
-      out.push(<Ext href={l?.expanded ?? url}>{l?.display ?? url}</Ext>);
+      let clean = url.replace(/[.,"'”’]+$/u, "");
+      while (clean.endsWith(")") && (clean.match(/\)/g)?.length ?? 0) > (clean.match(/\(/g)?.length ?? 0)) clean = clean.slice(0, -1);
+      const l = links.get(clean);
+      out.push(<Ext href={l?.expanded ?? clean}>{l?.display ?? clean}</Ext>);
+      out.push(url.slice(clean.length));
     } else if (mention) {
       out.push(<Ext href={`https://x.com/${mention.slice(1)}`}>{mention}</Ext>);
     } else if (tag) {
@@ -133,11 +136,19 @@ export function Avatar({ src, name = "", size = 28 }: { src: string; name?: stri
   if (!src || failed === src) {
     return (
       <span class="avatar blank" style={{ width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.46)}px` }} aria-hidden="true">
-        {[...name.trim()][0]?.toLocaleUpperCase()}
+        {initial(name)}
       </span>
     );
   }
   return <img class="avatar" src={cached(src)} width={size} height={size} alt="" loading="lazy" onError={() => setFailed(src)} />;
+}
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+function initial(name: string) {
+  for (const { segment } of graphemes.segment(name.trim())) {
+    if (/\p{L}/u.test(segment)) return segment.toLocaleUpperCase();
+  }
+  return "?";
 }
 
 /**
@@ -148,6 +159,12 @@ export function Avatar({ src, name = "", size = 28 }: { src: string; name?: stri
 export function previewRatio(m: Media): number | undefined {
   if (!m.width || !m.height) return undefined;
   return Math.min(Math.max(m.width / m.height, 0.75), 2);
+}
+
+export function mediaAlternative(m: Media): string {
+  if (m.description?.trim()) return m.description.trim();
+  const kind = m.kind === "photo" ? "Photo" : m.kind === "video" ? "Video" : "GIF";
+  return `${kind} attachment; no description was provided`;
 }
 
 /** Media laid out as X does: one item at its own shape, more in a grid. */
@@ -169,13 +186,14 @@ export function MediaGrid({ media, playable = false }: { media: Media[]; playabl
               playsInline
               preload="metadata"
               loop={m.kind === "animated_gif"}
+              aria-label={mediaAlternative(m)}
               style={style}
             />
           );
         }
         return (
           <figure key={m.thumb} class="frame" style={style}>
-            <img src={cached(`${m.thumb}?name=small`)} alt="" loading="lazy" />
+            <img src={cached(`${m.thumb}?name=small`)} alt={mediaAlternative(m)} loading="lazy" />
             {m.kind !== "photo" && (
               <span class="badge">
                 {m.kind === "video" ? (

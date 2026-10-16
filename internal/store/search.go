@@ -43,7 +43,10 @@ func parseSearch(input string) search {
 			tok = tok[1:]
 		}
 		key, value, isOp := strings.Cut(tok, ":")
-		value = strings.Trim(value, `"`)
+		if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
+			value = value[1 : len(value)-1]
+		}
+		value = strings.ReplaceAll(value, `\"`, `"`)
 		if !isOp || value == "" || !s.operator(strings.ToLower(key), value, neg) {
 			word := strings.Trim(tok, `"`)
 			if word == "" {
@@ -178,8 +181,14 @@ func tokenize(input string) []string {
 	var out []string
 	var cur strings.Builder
 	quoted := false
-	for _, r := range input {
+	runes := []rune(input)
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
 		switch {
+		case r == '\\' && quoted && i+1 < len(runes) && runes[i+1] == '"':
+			cur.WriteRune('\\')
+			cur.WriteRune('"')
+			i++
 		case r == '"':
 			quoted = !quoted
 			cur.WriteRune(r)

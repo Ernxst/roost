@@ -30,6 +30,9 @@ func (s *Store) AddHighlight(tweetID, source, quote string, now time.Time) (High
 	if quote == "" {
 		return Highlight{}, errors.New("select some text to highlight")
 	}
+	if len([]rune(quote)) > maxHighlightQuote {
+		return Highlight{}, errors.New("highlight is too long")
+	}
 	h := Highlight{TweetID: tweetID, Source: source, Quote: quote, CreatedAt: time.UnixMilli(now.UnixMilli())}
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -45,6 +48,31 @@ func (s *Store) AddHighlight(tweetID, source, quote string, now time.Time) (High
 		return h, err
 	}
 	return h, tx.Commit()
+}
+
+// RestoreHighlight puts a deleted highlight back with its original identity and content.
+func (s *Store) RestoreHighlight(h Highlight) error {
+	h.Quote = strings.TrimSpace(h.Quote)
+	h.Note = strings.TrimSpace(h.Note)
+	if h.ID <= 0 || h.TweetID == "" || h.Quote == "" || h.CreatedAt.IsZero() {
+		return errors.New("that highlight cannot be restored")
+	}
+	if len([]rune(h.Quote)) > maxHighlightQuote || len([]rune(h.Note)) > maxHighlightNote {
+		return errors.New("that highlight is too long")
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`INSERT INTO highlights (id, tweet_id, source, quote, note, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		h.ID, h.TweetID, h.Source, h.Quote, h.Note, h.CreatedAt.UnixMilli()); err != nil {
+		return err
+	}
+	if err := indexNotes(tx, h.TweetID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *Store) DeleteHighlight(id int64) error {
@@ -68,6 +96,9 @@ func (s *Store) DeleteHighlight(id int64) error {
 }
 
 func (s *Store) SetHighlightNote(id int64, note string) error {
+	if len([]rune(note)) > maxHighlightNote {
+		return errors.New("highlight note is too long")
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err

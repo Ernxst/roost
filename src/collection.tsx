@@ -70,6 +70,7 @@ export function CollectionEditor({ c, onClose }: { c: Collection; onClose: () =>
       <label class="field">
         <span class="field-label">Name</span>
         <input
+          maxLength={80}
           value={name.value}
           onInput={(e) => ((name.value = e.currentTarget.value), (error.value = ""))}
           autoComplete="off"
@@ -81,7 +82,7 @@ export function CollectionEditor({ c, onClose }: { c: Collection; onClose: () =>
       {c.query && (
         <label class="field">
           <span class="field-label">Search</span>
-          <input value={query.value} onInput={(e) => (query.value = e.currentTarget.value)} autoComplete="off" spellcheck={false} />
+          <input maxLength={500} value={query.value} onInput={(e) => (query.value = e.currentTarget.value)} autoComplete="off" spellcheck={false} />
         </label>
       )}
       <fieldset class="field swatches">

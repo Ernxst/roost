@@ -1,6 +1,5 @@
 import { batch, computed, effect, signal } from "@preact/signals";
 import { events, Library, type Author, type Bookmark, type Collection, type Progress, type Highlight, type Query, type Revisit, type Stats } from "./mygo";
-import { fixtureMode, isFixtureMode } from "./fixture-mode";
 
 export type View =
   | { kind: "all" }
@@ -102,12 +101,6 @@ function query(offset: number): Query {
 }
 
 let generation = 0;
-let fixtureData: Promise<typeof import("./fixtures")> | undefined;
-
-function loadFixtureData() {
-  return (fixtureData ??= import("./fixtures"));
-}
-
 export async function reload() {
   if (view.value.kind === "revisit") return loadRevisit();
   if (view.value.kind === "highlights") return loadHighlights();
@@ -115,22 +108,6 @@ export async function reload() {
   if (view.value.kind === "wall" || view.value.kind === "duplicates" || view.value.kind === "authors") return;
   const g = ++generation;
   loading.value = true;
-  if (import.meta.env.DEV && isFixtureMode) {
-    try {
-      const { fixtureList } = await loadFixtureData();
-      const res = fixtureList(0, fixtureMode === "thousand" ? 1000 : PAGE);
-      if (g !== generation) return;
-      batch(() => {
-        items.value = res.items;
-        total.value = res.total;
-      });
-    } catch (err) {
-      fail(err);
-    } finally {
-      if (g === generation) loading.value = false;
-    }
-    return;
-  }
   try {
     const res = await Library.list(query(0));
     if (g !== generation) return;
@@ -149,22 +126,6 @@ export async function loadMore() {
   if (loading.value || items.value.length >= total.value) return;
   const g = generation;
   loading.value = true;
-  if (import.meta.env.DEV && isFixtureMode) {
-    try {
-      const { fixtureList } = await loadFixtureData();
-      const res = fixtureList(items.value.length, PAGE);
-      if (g !== generation) return;
-      batch(() => {
-        items.value = [...items.value, ...res.items];
-        total.value = res.total;
-      });
-    } catch (err) {
-      fail(err);
-    } finally {
-      if (g === generation) loading.value = false;
-    }
-    return;
-  }
   try {
     const res = await Library.list(query(items.value.length));
     if (g !== generation) return;
@@ -181,20 +142,6 @@ export async function loadMore() {
 }
 
 export async function refreshMeta() {
-  if (import.meta.env.DEV && isFixtureMode) {
-    try {
-      const { fixtureMeta } = await loadFixtureData();
-      const meta = fixtureMeta();
-      batch(() => {
-        stats.value = meta.stats;
-        collections.value = meta.collections;
-        authors.value = meta.authors;
-      });
-    } catch (err) {
-      fail(err);
-    }
-    return;
-  }
   try {
     const [s, c, a] = await Promise.all([Library.stats(), Library.collections(), Library.authors(8)]);
     batch(() => {
@@ -211,7 +158,13 @@ export async function refreshMeta() {
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let lastSearch = search.peek();
 effect(() => {
-  view.value;
+  const activeView = view.value.kind;
+  if (!["all", "unsorted", "removed", "collection", "author", "sort"].includes(activeView)) {
+    batch(() => {
+      search.value = "";
+      mediaOnly.value = false;
+    });
+  }
   mediaOnly.value;
   const s = search.value;
   selected.value = new Set();
@@ -228,10 +181,6 @@ effect(() => {
 export const revisit = signal<Revisit | null>(null);
 
 export async function loadRevisit() {
-  if (isFixtureMode) {
-    revisit.value = { onThisDay: [], unopened: [], random: [] };
-    return;
-  }
   try {
     revisit.value = await Library.revisit(6);
   } catch (err) {
@@ -288,14 +237,12 @@ function patch(id: string, fn: (b: Bookmark) => Bookmark) {
 }
 
 export function markOpened(b: Bookmark) {
-  if (isFixtureMode) return;
   if (b.openedAt) return;
   patch(b.tweet.id, (x) => ({ ...x, openedAt: new Date().toISOString() }));
   Library.markOpened(b.tweet.id).catch((err) => fail(err));
 }
 
 export async function setAside(b: Bookmark, aside: boolean) {
-  if (isFixtureMode) return;
   patch(b.tweet.id, (x) => ({ ...x, asideAt: aside ? new Date().toISOString() : null }));
   await Library.setAside(b.tweet.id, aside);
   refreshMeta();
@@ -303,7 +250,6 @@ export async function setAside(b: Bookmark, aside: boolean) {
 
 /** Files a post into a collection, or takes it out, without the toggle's guesswork. */
 export async function file(b: Bookmark, collectionID: number, inside: boolean) {
-  if (isFixtureMode) return;
   patch(b.tweet.id, (x) => ({
     ...x,
     collections: inside
@@ -315,7 +261,6 @@ export async function file(b: Bookmark, collectionID: number, inside: boolean) {
 }
 
 export async function toggleCollection(b: Bookmark, collectionID: number) {
-  if (isFixtureMode) return;
   const inside = !b.collections.includes(collectionID);
   patch(b.tweet.id, (x) => ({
     ...x,
@@ -334,7 +279,6 @@ export async function toggleCollection(b: Bookmark, collectionID: number) {
 
 /** Files the selected bookmarks into a collection. */
 export async function fileSelected(collectionID: number) {
-  if (isFixtureMode) return;
   const ids = [...selected.value];
   const name = collections.value.find((c) => c.id === collectionID)?.name ?? "the collection";
   try {
@@ -351,7 +295,6 @@ export async function fileSelected(collectionID: number) {
 
 /** Sets the selected bookmarks aside from the sorting queue. */
 export async function setAsideSelected() {
-  if (isFixtureMode) return;
   const ids = [...selected.value];
   try {
     for (const id of ids) await Library.setAside(id, true);
@@ -365,7 +308,6 @@ export async function setAsideSelected() {
 }
 
 export async function saveNote(b: Bookmark, note: string) {
-  if (isFixtureMode) return;
   if (note.trim() === b.note) return;
   patch(b.tweet.id, (x) => ({ ...x, note: note.trim() }));
   try {
@@ -383,7 +325,6 @@ export const HUES = [28, 145, 250, 75, 320, 195, 5, 110, 280, 50];
 export const manual = () => collections.value.filter((c) => !c.query);
 
 export async function createCollection(name: string, query = "") {
-  if (isFixtureMode) throw new Error("Collections are read-only in fixture mode");
   const hue = HUES[collections.value.length % HUES.length] ?? 28;
   const c = await Library.createCollection(name, hue, query);
   await refreshMeta();
@@ -392,14 +333,12 @@ export async function createCollection(name: string, query = "") {
 }
 
 export async function updateCollection(c: Collection) {
-  if (isFixtureMode) throw new Error("Collections are read-only in fixture mode");
   await Library.updateCollection(c.id, c.name, c.hue, c.query);
   await refreshMeta();
   announce(`Saved ${c.name.trim()}`);
 }
 
 export async function deleteCollection(c: Collection) {
-  if (isFixtureMode) throw new Error("Collections are read-only in fixture mode");
   await Library.deleteCollection(c.id);
   view.value = { kind: "all" };
   await refreshMeta();
@@ -407,14 +346,18 @@ export async function deleteCollection(c: Collection) {
 }
 
 export async function startSync(full: boolean) {
-  if (isFixtureMode) return;
   try {
     progress.value = { phase: "loading", full, seen: 0, added: 0, removed: 0, message: "" };
     await Library.sync(full);
   } catch (err) {
-    progress.value = null;
-    fail(err);
+    progress.value = { phase: "failed", full, seen: 0, added: 0, removed: 0, message: errorText(err) };
+    announceLive("Sync failed");
   }
+}
+
+function announceLive(text: string) {
+  announcement.value = "";
+  requestAnimationFrame(() => (announcement.value = text));
 }
 
 let syncRefresh: ReturnType<typeof setTimeout> | undefined;
@@ -428,10 +371,12 @@ events.syncProgress.on((p) => {
     clearTimeout(syncRefresh);
     reload();
     refreshMeta();
-    if (p.phase === "failed") announce(`Sync failed: ${p.message}`, true, { label: "Try again", run: () => startSync(p.full) });
+    if (p.phase === "failed") {
+      announceLive("Sync failed");
+    }
     else {
       const parts = [`${p.added} new`];
-      if (p.removed) parts.push(`${p.removed} removed on X`);
+      if (p.removed) parts.push(`${p.removed} missing from bookmarks`);
       announce(`Sync finished: ${parts.join(", ")}`);
     }
   }

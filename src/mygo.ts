@@ -82,6 +82,7 @@ export interface Media {
   kind: string;
   thumb: string;
   video?: string;
+  description?: string;
   width: number;
   height: number;
 }
@@ -298,6 +299,9 @@ export const Library = {
   page(url: string): Promise<Page | null> {
     return call("Library.Page", url);
   },
+  restoreHighlight(id: number, tweetID: string, source: string, quote: string, note: string, createdAt: string): Promise<void> {
+    return call("Library.RestoreHighlight", id, tweetID, source, quote, note, createdAt);
+  },
   /** Reveal shows a file or folder in Finder. */
   reveal(path: string): Promise<void> {
     return call("Library.Reveal", path);
@@ -353,7 +357,7 @@ export const Library = {
   /**
    * Sync starts bringing the library up to date with X and returns at once;
    * SyncProgress reports how it goes. A full sync reads every bookmark and
-   * marks the ones gone from X as removed.
+   * records bookmarks that are missing after the complete scan.
    */
   sync(full: boolean): Promise<void> {
     return call("Library.Sync", full);

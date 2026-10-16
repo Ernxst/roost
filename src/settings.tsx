@@ -1,10 +1,10 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { Library, type MediaUsage, type Result, type Settings } from "./mygo";
-import { announce, count, fail, syncing, startSync } from "./state";
+import { announce, count, errorText, fail, syncing, startSync } from "./state";
 
 const size = (bytes: number) =>
-  bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : bytes < 1e9 ? `${(bytes / 1e6).toFixed(0)} MB` : `${(bytes / 1e9).toFixed(1)} GB`;
+  bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : bytes < 1e9 ? `${(bytes / 1e6).toFixed(0)} MB` : bytes < 1e12 ? `${(bytes / 1e9).toFixed(1)} GB` : `${(bytes / 1e12).toFixed(1)} TB`;
 
 const syncChoices: [number, string][] = [
   [0, "Only when I ask"],
@@ -22,6 +22,9 @@ export function SettingsButton() {
   const usage = useSignal<MediaUsage | null>(null);
   const exporting = useSignal(false);
   const exported = useSignal<Result | null>(null);
+  const saveError = useSignal("");
+  const retryPatch = useSignal<Partial<Settings> | null>(null);
+  const saving = useSignal(false);
 
   async function exportNotes(choose: boolean) {
     exporting.value = true;
@@ -61,13 +64,21 @@ export function SettingsButton() {
   }, []);
 
   async function change(patch: Partial<Settings>) {
-    if (!settings.value) return;
-    const next = { ...settings.value, ...patch };
+    const previous = settings.value;
+    if (!previous || saving.value) return;
+    const next = { ...previous, ...patch };
     settings.value = next;
+    saving.value = true;
+    saveError.value = "";
+    retryPatch.value = null;
     try {
       await Library.saveSettings(next);
     } catch (err) {
-      fail(err);
+      settings.value = previous;
+      saveError.value = errorText(err);
+      retryPatch.value = patch;
+    } finally {
+      saving.value = false;
     }
   }
 
@@ -87,17 +98,25 @@ export function SettingsButton() {
               ✕
             </button>
           </div>
+          {saveError.value && (
+            <div class="settings-error" role="alert">
+              <p>Unable to save this setting. Your previous value is restored. {saveError.value}</p>
+              <button class="press quiet" disabled={saving.value} onClick={() => retryPatch.value && change(retryPatch.value)}>
+                Try again
+              </button>
+            </div>
+          )}
           {s && (
             <>
               <section class="setting">
                 <h3>Background sync</h3>
                 <p class="hint">
                   roost checks X for new bookmarks while it is open, even with its window closed. Once a week it reads every bookmark to
-                  notice the ones gone from X. It lives in the menu bar until you quit it.
+                  find bookmarks that are missing. They may have been unbookmarked or removed from X. roost lives in the menu bar until you quit it.
                 </p>
                 <label class="field">
                   <span>Check</span>
-                  <select value={s.syncEvery} onChange={(e) => change({ syncEvery: Number(e.currentTarget.value) })}>
+                  <select value={s.syncEvery} disabled={saving.value} onChange={(e) => change({ syncEvery: Number(e.currentTarget.value) })}>
                     {syncChoices.map(([minutes, label]) => (
                       <option key={minutes} value={minutes}>
                         {label}
@@ -106,15 +125,15 @@ export function SettingsButton() {
                   </select>
                 </label>
                 <label class="check">
-                  <input type="checkbox" checked={s.notify} disabled={s.syncEvery === 0} onChange={(e) => change({ notify: e.currentTarget.checked })} />
-                  <span>Tell me when bookmarks arrive or leave X</span>
+                  <input type="checkbox" checked={s.notify} disabled={saving.value || s.syncEvery === 0} onChange={(e) => change({ notify: e.currentTarget.checked })} />
+                  <span>Tell me when bookmarks arrive or are missing</span>
                 </label>
               </section>
               <section class="setting">
-                <h3>Posts gone from X</h3>
+                <h3>Missing bookmarks</h3>
                 <p class="hint">
-                  A sync stops at the first bookmark roost already has. To find the posts you unbookmarked or X took down, read every
-                  bookmark; a large library takes a few minutes.
+                  A sync stops at the first bookmark roost already has. A full read finds bookmarks that are missing; they may have been
+                  unbookmarked or removed from X. A large library takes a few minutes.
                 </p>
                 <div class="row">
                   <button class="press quiet" disabled={syncing.value} onClick={() => (dialog.current?.close(), startSync(true))}>
@@ -126,10 +145,10 @@ export function SettingsButton() {
                 <h3>Offline media</h3>
                 <p class="hint">
                   roost keeps a copy of every image, so posts still look right offline or after X takes them down.
-                  {usage.value && ` ${usage.value.files.toLocaleString()} files, ${size(usage.value.bytes)}, are on this Mac.`}
+                  {usage.value && ` ${count(usage.value.files, "file")}, ${size(usage.value.bytes)}, are on this Mac.`}
                 </p>
                 <label class="check">
-                  <input type="checkbox" checked={s.cacheVideos} onChange={(e) => change({ cacheVideos: e.currentTarget.checked })} />
+                  <input type="checkbox" checked={s.cacheVideos} disabled={saving.value} onChange={(e) => change({ cacheVideos: e.currentTarget.checked })} />
                   <span>Keep videos too</span>
                 </label>
               </section>

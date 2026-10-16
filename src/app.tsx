@@ -1,7 +1,7 @@
-import { useComputed, useSignal, useSignalEffect } from "@preact/signals";
+import { signal, useComputed, useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { Library, type Bookmark, type Collection } from "./mygo";
-import { fixtureHref, fixtureMode, isFixtureMode, type FixtureMode } from "./fixture-mode";
+import { fixtureHref, fixtureMode, type FixtureMode } from "./fixture-mode";
 import {
   announce,
   announcement,
@@ -58,14 +58,22 @@ import { Avatar, longDate, longDay, MediaGrid, openExternal, previewRatio, Quote
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
 
 export function App() {
+  const lastFocused = useRef<HTMLElement | null>(null);
   useKeyboard();
+  useEffect(() => {
+    function rememberFocus() {
+      if (!opened.value && document.activeElement instanceof HTMLElement) lastFocused.current = document.activeElement;
+    }
+    document.addEventListener("focusin", rememberFocus);
+    return () => document.removeEventListener("focusin", rememberFocus);
+  }, []);
   return (
     <div class="shell">
-      <a class="skip" href="#feed">
+      <a class="skip" href="#feed" inert={!!opened.value}>
         Skip to bookmarks
       </a>
-      <Rail />
-      <main class="desk" id="feed" tabIndex={-1}>
+      <Rail inert={!!opened.value} />
+      <main class="desk" id="feed" tabIndex={-1} inert={!!opened.value}>
         <Toolbar />
         {view.value.kind === "sort" ? (
           <SortMode />
@@ -83,21 +91,21 @@ export function App() {
           <Feed />
         )}
       </main>
-      <Sheet />
-      <div class="sr-only" role="status" aria-live="polite">
+      <Sheet lastFocused={lastFocused} />
+      <div class="sr-only" role="status" aria-live="polite" inert={!!opened.value}>
         {announcement.value}
       </div>
-      <Notice />
-      {import.meta.env.DEV && <FixtureSwitcher />}
+      <Notice inert={!!opened.value} />
+      {import.meta.env.DEV && <FixtureSwitcher inert={!!opened.value} />}
     </div>
   );
 }
 
 /** The live region's message, shown for sighted readers too. */
-function Notice() {
+function Notice({ inert }: { inert: boolean }) {
   const n = notice.value;
   return (
-    <div class={n.error ? "notice error" : n.action ? "notice acting" : "notice"} data-shown={n.shown || undefined} aria-hidden={!n.shown || undefined}>
+    <div class={n.error ? "notice error" : n.action ? "notice acting" : "notice"} data-shown={n.shown || undefined} aria-hidden={!n.shown || undefined} inert={inert}>
       <p>{n.text}</p>
       {n.action && (
         <button
@@ -128,9 +136,9 @@ const FIXTURE_MODES: { mode: FixtureMode; label: string }[] = [
   { mode: "thousand", label: "1,000 rows" },
 ];
 
-function FixtureSwitcher() {
+function FixtureSwitcher({ inert }: { inert: boolean }) {
   return (
-    <nav class="fixture-switcher" aria-label="Development data fixtures">
+    <nav class="fixture-switcher" aria-label="Development data fixtures" inert={inert}>
       {FIXTURE_MODES.map(({ mode, label }) => (
         <a key={mode} href={fixtureHref(mode)} aria-current={fixtureMode === mode ? "page" : undefined}>
           {label}
@@ -175,7 +183,7 @@ function RailItem({
   );
 }
 
-function Rail() {
+function Rail({ inert }: { inert: boolean }) {
   const s = stats.value;
   const adding = useSignal(false);
   const name = useSignal("");
@@ -200,7 +208,7 @@ function Rail() {
   }
 
   return (
-    <nav class="rail" aria-label="Library">
+    <nav class="rail" aria-label="Library" inert={inert}>
       <div class="masthead">
         <span class="wordmark">roost</span>
         <span class="tagline">a field journal of the posts you kept</span>
@@ -208,17 +216,17 @@ function Rail() {
 
       <ul class="rail-list">
         <RailItem target={{ kind: "all" }} label="Everything" count={s?.total} />
-        <RailItem target={{ kind: "unsorted" }} label="Unsorted" count={s?.unsorted} disabled={isFixtureMode} />
-        {!!s?.removed && <RailItem target={{ kind: "removed" }} label="Gone from X" count={s.removed} disabled={isFixtureMode} />}
+        <RailItem target={{ kind: "unsorted" }} label="Unsorted" count={s?.unsorted} />
+        {!!s?.removed && <RailItem target={{ kind: "removed" }} label="Missing from bookmarks" count={s.removed} />}
       </ul>
 
       <h2 class="rail-heading">Rituals</h2>
       <ul class="rail-list">
-        <RailItem target={{ kind: "sort" }} label="Sort the unsorted" count={s?.toSort} disabled={isFixtureMode} />
-        <RailItem target={{ kind: "revisit" }} label="Revisit" disabled={isFixtureMode} />
-        <RailItem target={{ kind: "highlights" }} label="Highlights" disabled={isFixtureMode} />
-        <RailItem target={{ kind: "wall" }} label="Media wall" disabled={isFixtureMode} />
-        <RailItem target={{ kind: "duplicates" }} label="Duplicates" disabled={isFixtureMode} />
+        <RailItem target={{ kind: "sort" }} label="Sort the unsorted" count={s?.toSort} />
+        <RailItem target={{ kind: "revisit" }} label="Revisit" />
+        <RailItem target={{ kind: "highlights" }} label="Highlights" />
+        <RailItem target={{ kind: "wall" }} label="Media wall" />
+        <RailItem target={{ kind: "duplicates" }} label="Duplicates" />
       </ul>
 
       <h2 class="rail-heading">Collections</h2>
@@ -231,7 +239,6 @@ function Rail() {
             count={c.count}
             hue={c.hue}
             smart={c.query || undefined}
-            disabled={isFixtureMode}
           />
         ))}
       </ul>
@@ -241,6 +248,7 @@ function Rail() {
             New collection
           </label>
           <input
+            maxLength={80}
             id="new-collection"
             value={name.value}
             onInput={(e) => (name.value = e.currentTarget.value)}
@@ -259,7 +267,7 @@ function Rail() {
           )}
         </form>
       ) : (
-          <button class="add" disabled={isFixtureMode} onClick={() => (adding.value = true)}>
+          <button class="add" onClick={() => (adding.value = true)}>
           + New collection
         </button>
       )}
@@ -273,7 +281,6 @@ function Rail() {
                 <button
                   class="rail-item"
                   aria-current={same(view.value, { kind: "author", handle: a.handle }) ? "page" : undefined}
-                  disabled={isFixtureMode}
                   onClick={() => (view.value = { kind: "author", handle: a.handle })}
                   title={a.name || a.handle}
                 >
@@ -283,14 +290,14 @@ function Rail() {
                 </button>
               </li>
             ))}
-            <RailItem target={{ kind: "authors" }} label="All authors" disabled={isFixtureMode} />
+            <RailItem target={{ kind: "authors" }} label="All authors" />
           </ul>
         </>
       )}
       <div class="rail-foot">
-        {!isFixtureMode && <SettingsButton />}
+        <SettingsButton />
         <Keys />
-        {!isFixtureMode && <WhatsNew />}
+        <WhatsNew />
       </div>
     </nav>
   );
@@ -310,8 +317,9 @@ function SyncStatus() {
   if (p?.phase === "login") return <span class="ticker live">Sign in to X in the window that opened</span>;
   if (p?.phase === "failed") {
     return (
-      <span class="ticker failed" title={p.message}>
-        Sync failed: {p.message}
+      <span class="ticker failed">
+        <span class="ticker-mark" aria-hidden="true">!</span>
+        Sync failed
       </span>
     );
   }
@@ -319,26 +327,58 @@ function SyncStatus() {
   return (
     <span class="ticker" title={longDate(last.finishedAt)}>
       Synced {relative(last.finishedAt)} · {last.added.toLocaleString()} new
-      {last.removed ? ` · ${last.removed.toLocaleString()} gone` : ""}
-      {p?.phase === "done" && p.message ? ` · ${p.message}` : ""}
+      {last.removed ? ` · ${last.removed.toLocaleString()} missing from bookmarks` : ""}
     </span>
   );
 }
 
+const dismissedSyncNotice = signal<unknown>(null);
+
+/** The full text of a failed or incomplete sync. It floats under the toolbar so nothing below it moves. */
+function SyncNotice() {
+  const p = progress.value;
+  const failed = p?.phase === "failed";
+  if (!p || !p.message || (!failed && p.phase !== "done") || dismissedSyncNotice.value === p) return null;
+  return (
+    <div class={failed ? "sync-notice failed" : "sync-notice"} role={failed ? "alert" : "status"}>
+      <p>{failed ? syncFailure(p.message) : p.message}</p>
+      {failed && <details><summary>Technical details</summary><code>{p.message}</code></details>}
+      {failed && <button class="press quiet" onClick={() => startSync(p.full)}>Try again</button>}
+      <button class="press quiet" onClick={() => (dismissedSyncNotice.value = p)}>
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
+function syncFailure(message: string) {
+  if (/timeout|deadline/i.test(message)) return "Sync failed because X took too long to respond.";
+  if (/tls|certificate|handshake/i.test(message)) return "Sync failed because X’s secure connection could not be verified.";
+  if (/lookup|dial tcp|connection refused|network/i.test(message)) return "Sync failed because roost could not reach X.";
+  if (/sign.?in|login|unauthori[sz]ed|forbidden|cookie/i.test(message)) return "Sync failed because X needs you to sign in again.";
+  return "Sync failed. Try again or check your connection and sign-in.";
+}
+
 function Toolbar() {
+  const showFeedFilters = ["all", "unsorted", "removed", "collection", "author", "sort"].includes(view.value.kind);
   return (
     <header class="toolbar">
-      <SearchBox />
-      {search.value.trim() && !isFixtureMode && <SaveSearch />}
-      <button class="chip" disabled={isFixtureMode} aria-pressed={mediaOnly.value} onClick={() => (mediaOnly.value = !mediaOnly.value)}>
-        With media
-      </button>
+      {showFeedFilters && (
+        <>
+          <SearchBox />
+          {search.value.trim() && <SaveSearch />}
+          <button class="chip" aria-pressed={mediaOnly.value} onClick={() => (mediaOnly.value = !mediaOnly.value)}>
+            With media
+          </button>
+        </>
+      )}
       <div class="sync">
         <SyncStatus />
-        <button class="press" disabled={syncing.value || isFixtureMode} onClick={() => startSync(false)}>
+        <button class="press" disabled={syncing.value} onClick={() => startSync(false)}>
           Sync
         </button>
       </div>
+      <SyncNotice />
     </header>
   );
 }
@@ -405,7 +445,7 @@ function viewTitle(v: View): string {
     case "unsorted":
       return "Unsorted";
     case "removed":
-      return "Gone from X";
+      return "Missing from bookmarks";
     case "collection":
       return collections.value.find((c) => c.id === v.id)?.name ?? "Collection";
     case "sort":
@@ -485,8 +525,8 @@ function Feed() {
           {loading.value && items.value.length === 0 ? "Loading…" : count(total.value, "post")}
           {search.value && ` matching “${search.value}”`}
         </span>
-        {shown && !isFixtureMode && <ShareCollection id={shown.id} />}
-        {shown && !isFixtureMode && (
+        {shown && <ShareCollection id={shown.id} />}
+        {shown && (
           <button
             ref={editButton}
             class="chip edit"
@@ -507,7 +547,7 @@ function Feed() {
           }}
         />
       )}
-      {v.kind === "author" && !isFixtureMode && <AuthorHead handle={v.handle} />}
+      {v.kind === "author" && <AuthorHead handle={v.handle} />}
       {!loading.value && total.value === 0 && <Empty />}
       <div class="columns" ref={desk}>
         {columns.value.map((col, i) => (
@@ -691,10 +731,10 @@ function Empty() {
       <p class="lede">The journal is empty.</p>
       <p>Sync to read your bookmarks from X. A window opens if X asks you to sign in.</p>
       <div class="row">
-        <button class="press" disabled={isFixtureMode} onClick={() => startSync(true)}>
+        <button class="press" onClick={() => startSync(true)}>
           Sync from X
         </button>
-        <button class="press quiet" disabled={isFixtureMode} onClick={importFile}>
+        <button class="press quiet" onClick={importFile}>
           Import an export…
         </button>
       </div>
@@ -702,11 +742,12 @@ function Empty() {
   );
 }
 
-function Sheet() {
+function Sheet({ lastFocused }: { lastFocused: { current: HTMLElement | null } }) {
   const id = opened.value;
   const b = find(id);
-  const panel = useRef<HTMLElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
+  const wasOpen = useRef(false);
   const note = useSignal("");
   const reading = useSignal<string | null>(null);
   const hl = usePostHighlights(b);
@@ -716,12 +757,38 @@ function Sheet() {
   useSignalEffect(() => {
     const o = opened.value;
     if (o) {
-      returnTo.current = document.activeElement as HTMLElement;
+      if (!wasOpen.current) returnTo.current = lastFocused.current ?? (document.activeElement as HTMLElement);
+      wasOpen.current = true;
       requestAnimationFrame(() => panel.current?.focus());
-    } else {
-      returnTo.current?.focus();
+    } else if (wasOpen.current) {
+      wasOpen.current = false;
+      const target = returnTo.current;
+      returnTo.current = null;
+      if (target?.isConnected) target.focus();
     }
   });
+  useEffect(() => {
+    function trapFocus(e: KeyboardEvent) {
+      if (!opened.value || e.key !== "Tab" || !panel.current) return;
+      const focusable = [...panel.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      )].filter((el) => el.getClientRects().length > 0);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) {
+        e.preventDefault();
+        panel.current.focus();
+      } else if (e.shiftKey && (document.activeElement === first || !panel.current.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !panel.current.contains(document.activeElement))) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    window.addEventListener("keydown", trapFocus);
+    return () => window.removeEventListener("keydown", trapFocus);
+  }, []);
   useEffect(() => {
     note.value = b?.note ?? "";
     reading.value = null;
@@ -732,7 +799,7 @@ function Sheet() {
   const t = b.tweet;
   if (reading.value) {
     return (
-      <aside class="sheet wide" ref={panel} tabIndex={-1} aria-label="Saved page">
+      <div class="sheet wide" ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Saved page">
         <Reader
           url={reading.value}
           tweetId={t.id}
@@ -740,11 +807,11 @@ function Sheet() {
           onAdd={hl.add}
           onClose={() => (reading.value = null)}
         />
-      </aside>
+      </div>
     );
   }
   return (
-    <aside class="sheet" ref={panel} tabIndex={-1} aria-label={`Post by ${t.authorName}`}>
+    <div class="sheet" ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Post by ${t.authorName || `@${t.authorHandle}`}`}>
       <div class="sheet-head">
         <span class="sheet-kicker">Kept post</span>
         <button class="close" onClick={() => (opened.value = null)} aria-label="Close">
@@ -752,11 +819,10 @@ function Sheet() {
         </button>
       </div>
       <div class="byline big">
-        <Avatar src={t.authorAvatar} name={t.authorName} size={40} />
+        <Avatar src={t.authorAvatar} name={t.authorName || t.authorHandle} size={40} />
         <h2 class="who">
           <button
             class="author-link"
-            disabled={isFixtureMode}
             onClick={() => {
               opened.value = null;
               showAuthor(t.authorHandle);
@@ -768,31 +834,20 @@ function Sheet() {
           </button>
         </h2>
       </div>
-      {isFixtureMode ? (
-        <>
-          {t.text && <Text tweet={t} />}
-          <MediaGrid media={t.media} playable />
-          {t.quoted && <Quoted tweet={t.quoted} />}
-          <Thread b={b} />
-        </>
-      ) : (
-        <>
-          <Highlighter tweetId={t.id} onAdd={hl.add}>
-            {t.text && <Text tweet={t} mark={(s) => marked(s, quotes)} />}
-            <MediaGrid media={t.media} playable />
-            {t.quoted && <Quoted tweet={t.quoted} />}
-            <Thread b={b} />
-          </Highlighter>
-          <Links b={b} onRead={(url) => (reading.value = url)} />
-        </>
-      )}
+      <Highlighter tweetId={t.id} onAdd={hl.add}>
+        {t.text && <Text tweet={t} mark={(s) => marked(s, quotes)} />}
+        <MediaGrid media={t.media} playable />
+        {t.quoted && <Quoted tweet={t.quoted} />}
+        <Thread b={b} />
+      </Highlighter>
+      <Links b={b} onRead={(url) => (reading.value = url)} />
       <fieldset class="file-under">
         <legend>File under</legend>
         <SuggestedChips ids={suggested.value} onFile={(id) => toggleCollection(b, id)} />
         {manual().length === 0 && <p class="hint">Make a collection in the sidebar to file posts.</p>}
         {manual().map((c, i) => (
           <label key={c.id} class="check" style={{ "--hue": ink(c.hue) }}>
-            <input type="checkbox" disabled={isFixtureMode} checked={b.collections.includes(c.id)} onChange={() => toggleCollection(b, c.id)} />
+            <input type="checkbox" checked={b.collections.includes(c.id)} onChange={() => toggleCollection(b, c.id)} />
             <span>{c.name}</span>
             {i < 9 && <kbd aria-hidden="true">{i + 1}</kbd>}
           </label>
@@ -803,10 +858,10 @@ function Sheet() {
         <span class="legend">Field note</span>
         <textarea
           id="note"
+          maxLength={2000}
           dir="auto"
           rows={4}
           value={note.value}
-          disabled={isFixtureMode}
           onInput={(e) => {
             note.value = e.currentTarget.value;
             clearTimeout(noteTimer);
@@ -816,7 +871,7 @@ function Sheet() {
           placeholder="Why you kept it…"
         />
       </label>
-      {!isFixtureMode && <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} onNote={hl.note} />}
+      {<HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} onNote={hl.note} />}
       <p class="meta">
         Posted <time dateTime={t.createdAt}>{longDate(t.createdAt)}</time>
         <br />
@@ -824,14 +879,14 @@ function Sheet() {
         {b.removedAt && (
           <>
             <br />
-            Gone from X since <time dateTime={b.removedAt}>{longDay(b.removedAt)}</time>
+            Missing from bookmarks since <time dateTime={b.removedAt}>{longDay(b.removedAt)}</time>
           </>
         )}
       </p>
       <a class="press link" href={t.url} onClick={(e) => openExternal(e, t.url)}>
         Open on X ↗
       </a>
-    </aside>
+    </div>
   );
 }
 
@@ -839,7 +894,11 @@ let noteTimer: ReturnType<typeof setTimeout> | undefined;
 
 function typing(e: KeyboardEvent) {
   const el = e.target as HTMLElement;
-  return el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
+  return (
+    el.isContentEditable ||
+    ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "A", "SUMMARY"].includes(el.tagName) ||
+    !!el.closest("[role='button'], [role='link']")
+  );
 }
 
 function useKeyboard() {

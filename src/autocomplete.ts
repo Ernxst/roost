@@ -23,7 +23,7 @@ const KEYS: [string, string][] = [
   ["from:", "posts by an author"],
   ["has:", "media, links, notes and more"],
   ["in:", "in a collection"],
-  ["is:", "gone, opened, unopened or set aside"],
+  ["is:", "missing from bookmarks, opened, unopened or set aside"],
   ["before:", "posted before a date"],
   ["after:", "posted after a date"],
   ["domain:", "posts linking to a site"],
@@ -45,7 +45,7 @@ const HAS: [string, string][] = [
 ];
 
 const IS: [string, string][] = [
-  ["gone", "removed on X"],
+  ["gone", "missing from bookmarks"],
   ["opened", "opened in roost"],
   ["unopened", "never opened in roost"],
   ["aside", "set aside while sorting"],

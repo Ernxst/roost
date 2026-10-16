@@ -3,7 +3,6 @@ import { useEffect, useRef } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { Library, type Bookmark, type Highlight } from "./mygo";
 import { announce, fail, highlights, openPost } from "./state";
-import { isFixtureMode } from "./fixture-mode";
 import { Avatar, shortDate } from "./tweet";
 
 /**
@@ -126,10 +125,10 @@ function HighlightNote({ h, onSave }: { h: Highlight; onSave: (id: number, note:
       <textarea
         id={`hl-note-${h.id}`}
         class="highlight-note"
+        maxLength={500}
         dir="auto"
         rows={1}
         value={note.value}
-        disabled={isFixtureMode}
         placeholder="Add a note…"
         onInput={(e) => {
           note.value = e.currentTarget.value;
@@ -202,10 +201,10 @@ export function HighlightsView() {
             <li key={h.id} class="clipping">
               <blockquote dir="auto">{h.quote}</blockquote>
               <HighlightNote h={h} onSave={(id, note) => saveHighlightNote(highlights, id, note)} />
-              <button class="clip-source" onClick={() => openPost(h.tweetId)}>
-                {h.tweet && <Avatar src={h.tweet.authorAvatar} name={h.tweet.authorName} size={18} />}
+              <button class="clip-source" disabled={!h.tweet} onClick={() => h.tweet && openPost(h.tweetId)}>
+                {h.tweet && <Avatar src={h.tweet.authorAvatar} name={h.tweet.authorName || h.tweet.authorHandle} size={18} />}
                 <span>
-                  {h.tweet?.authorName}
+                  {h.tweet ? (h.tweet.authorName || `@${h.tweet.authorHandle}`) : "Post no longer saved"}
                   {h.source && ` · ${new URL(h.source).hostname.replace(/^www\./, "")}`}
                 </span>
                 <time dateTime={h.createdAt}>{shortDate(h.createdAt)}</time>
@@ -227,8 +226,8 @@ export function usePostHighlights(b: Bookmark | undefined) {
   }, [b?.tweet.id]);
   async function restore(h: Highlight) {
     try {
-      const back = await Library.addHighlight(h.tweetId, h.source, h.quote);
-      list.value = [...list.value, back];
+      await Library.restoreHighlight(h.id, h.tweetId, h.source, h.quote, h.note, h.createdAt);
+      list.value = [...list.value, h];
       announce("Highlight restored");
     } catch (err) {
       fail(err);

@@ -37,6 +37,9 @@ func (s *Store) LinkCandidates(limit int) ([]string, error) {
 }
 
 func (s *Store) SaveLink(p links.Page, now time.Time) error {
+	if len([]rune(p.Title)) > 300 {
+		p.Title = string([]rune(p.Title)[:300])
+	}
 	data, err := json.Marshal(p)
 	if err != nil {
 		return err

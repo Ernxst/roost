@@ -62,7 +62,7 @@ export function AuthorsView() {
 
 /**
  * What the library holds by the author in view: a link to their profile,
- * how many of their posts are gone from X, and the collections their posts
+ * how many of their bookmarks are missing, and the collections their posts
  * are filed in, each of which narrows the feed to it.
  */
 export function AuthorHead({ handle }: { handle: string }) {
@@ -81,7 +81,7 @@ export function AuthorHead({ handle }: { handle: string }) {
   const pick = (q: string) => (search.value = search.value === q ? "" : q);
   return (
     <div class="author-head">
-      <Avatar src={a.avatar} name={a.name} size={44} />
+      <Avatar src={a.avatar} name={a.name || a.handle} size={44} />
       <div class="author-facts">
         <a class="ext" href={profile} onClick={(e) => openExternal(e, profile)}>
           @{a.handle} on X ↗
@@ -91,16 +91,16 @@ export function AuthorHead({ handle }: { handle: string }) {
             {a.collections.map(({ id, count }) => {
               const c = byId.get(id);
               if (!c) return null;
-              const q = `in:"${c.name}"`;
+              const q = `in:"${c.name.replaceAll('"', '\\"')}"`;
               return (
-                <button key={id} class="chip filed" style={{ "--hue": ink(c.hue) }} aria-pressed={search.value === q} onClick={() => pick(q)}>
+                <button key={id} class="chip filed" title={c.name} style={{ "--hue": ink(c.hue) }} aria-pressed={search.value === q} onClick={() => pick(q)}>
                   {c.name} · {count.toLocaleString()}
                 </button>
               );
             })}
             {a.gone > 0 && (
               <button class="chip" aria-pressed={search.value === "is:gone"} onClick={() => pick("is:gone")}>
-                Gone from X · {a.gone.toLocaleString()}
+                Missing from bookmarks · {a.gone.toLocaleString()}
               </button>
             )}
           </div>

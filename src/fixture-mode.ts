@@ -5,7 +5,6 @@ const requestedMode = new URLSearchParams(window.location.search).get("data");
 export const fixtureMode: FixtureMode = import.meta.env.DEV && MODES.includes(requestedMode as FixtureMode)
   ? (requestedMode as FixtureMode)
   : "demo";
-export const isFixtureMode = fixtureMode !== "demo";
 
 export function fixtureHref(mode: FixtureMode): string {
   const url = new URL(window.location.href);
