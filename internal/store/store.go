@@ -589,19 +589,27 @@ func (s *Store) SetInCollection(tweetID string, collectionID int64, in bool, now
 }
 
 func (s *Store) SetNote(tweetID, note string) error {
-	if _, err := s.db.Exec(`UPDATE bookmarks SET note = ? WHERE tweet_id = ?`, strings.TrimSpace(note), tweetID); err != nil {
+	tx, err := s.db.Begin()
+	if err != nil {
 		return err
 	}
-	return s.indexNotes(tweetID)
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE bookmarks SET note = ? WHERE tweet_id = ?`, strings.TrimSpace(note), tweetID); err != nil {
+		return err
+	}
+	if err := indexNotes(tx, tweetID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // indexNotes makes the words the user kept about a post searchable: its
 // note, its highlights and their notes.
-func (s *Store) indexNotes(tweetID string) error {
-	if _, err := s.db.Exec(`DELETE FROM notes_fts WHERE rowid = (SELECT rowid FROM tweets WHERE id = ?)`, tweetID); err != nil {
+func indexNotes(tx *sql.Tx, tweetID string) error {
+	if _, err := tx.Exec(`DELETE FROM notes_fts WHERE rowid = (SELECT rowid FROM tweets WHERE id = ?)`, tweetID); err != nil {
 		return err
 	}
-	_, err := s.db.Exec(`INSERT INTO notes_fts (rowid, text)
+	_, err := tx.Exec(`INSERT INTO notes_fts (rowid, text)
 		SELECT t.rowid, b.note || ' ' || coalesce((SELECT group_concat(h.quote || ' ' || h.note, ' ') FROM highlights h WHERE h.tweet_id = t.id), '')
 		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id WHERE t.id = ?`, tweetID)
 	return err

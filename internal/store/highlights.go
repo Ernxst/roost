@@ -31,36 +31,60 @@ func (s *Store) AddHighlight(tweetID, source, quote string, now time.Time) (High
 		return Highlight{}, errors.New("select some text to highlight")
 	}
 	h := Highlight{TweetID: tweetID, Source: source, Quote: quote, CreatedAt: time.UnixMilli(now.UnixMilli())}
-	err := s.db.QueryRow(`INSERT INTO highlights (tweet_id, source, quote, created_at) VALUES (?, ?, ?, ?) RETURNING id`,
+	tx, err := s.db.Begin()
+	if err != nil {
+		return h, err
+	}
+	defer tx.Rollback()
+	err = tx.QueryRow(`INSERT INTO highlights (tweet_id, source, quote, created_at) VALUES (?, ?, ?, ?) RETURNING id`,
 		tweetID, source, quote, now.UnixMilli()).Scan(&h.ID)
 	if err != nil {
 		return h, err
 	}
-	return h, s.indexNotes(tweetID)
+	if err := indexNotes(tx, tweetID); err != nil {
+		return h, err
+	}
+	return h, tx.Commit()
 }
 
 func (s *Store) DeleteHighlight(id int64) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	var tweetID string
-	err := s.db.QueryRow(`DELETE FROM highlights WHERE id = ? RETURNING tweet_id`, id).Scan(&tweetID)
+	err = tx.QueryRow(`DELETE FROM highlights WHERE id = ? RETURNING tweet_id`, id).Scan(&tweetID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	return s.indexNotes(tweetID)
+	if err := indexNotes(tx, tweetID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *Store) SetHighlightNote(id int64, note string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	var tweetID string
-	err := s.db.QueryRow(`UPDATE highlights SET note = ? WHERE id = ? RETURNING tweet_id`, strings.TrimSpace(note), id).Scan(&tweetID)
+	err = tx.QueryRow(`UPDATE highlights SET note = ? WHERE id = ? RETURNING tweet_id`, strings.TrimSpace(note), id).Scan(&tweetID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("that highlight no longer exists")
 	}
 	if err != nil {
 		return err
 	}
-	return s.indexNotes(tweetID)
+	if err := indexNotes(tx, tweetID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // Highlights returns a post's highlights, oldest first.

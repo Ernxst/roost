@@ -439,6 +439,66 @@ func TestHighlights(t *testing.T) {
 	}
 }
 
+func TestNoteWritesRollBackWhenIndexingFails(t *testing.T) {
+	for _, name := range []string{"add highlight", "delete highlight", "set highlight note", "set bookmark note"} {
+		t.Run(name, func(t *testing.T) {
+			s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer s.Close()
+			now := time.Unix(1000, 0)
+			if _, err := s.Ingest([]xparse.Entry{entry("1", 10, "post", false)}, now); err != nil {
+				t.Fatal(err)
+			}
+			h, err := s.AddHighlight("1", "", "quote", now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if name == "set bookmark note" {
+				if err := s.SetNote("1", "old bookmark note"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := s.db.Exec(`DROP TABLE notes_fts`); err != nil {
+				t.Fatal(err)
+			}
+
+			switch name {
+			case "add highlight":
+				_, err = s.AddHighlight("1", "", "new quote", now)
+			case "delete highlight":
+				err = s.DeleteHighlight(h.ID)
+			case "set highlight note":
+				err = s.SetHighlightNote(h.ID, "new highlight note")
+			case "set bookmark note":
+				err = s.SetNote("1", "new bookmark note")
+			}
+			if err == nil {
+				t.Fatal("write succeeded with the notes index missing")
+			}
+
+			var highlights int
+			if err := s.db.QueryRow(`SELECT count(*) FROM highlights`).Scan(&highlights); err != nil {
+				t.Fatal(err)
+			}
+			if (name == "add highlight" && highlights != 1) || (name == "delete highlight" && highlights != 1) {
+				t.Fatalf("highlight count after failed %s = %d", name, highlights)
+			}
+			var highlightNote, bookmarkNote string
+			if err := s.db.QueryRow(`SELECT note FROM highlights WHERE id = ?`, h.ID).Scan(&highlightNote); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.db.QueryRow(`SELECT note FROM bookmarks WHERE tweet_id = '1'`).Scan(&bookmarkNote); err != nil {
+				t.Fatal(err)
+			}
+			if highlightNote != "" || (name == "set bookmark note" && bookmarkNote != "old bookmark note") || (name != "set bookmark note" && bookmarkNote != "") {
+				t.Fatalf("notes after failed %s: highlight %q, bookmark %q", name, highlightNote, bookmarkNote)
+			}
+		})
+	}
+}
+
 func TestSuggest(t *testing.T) {
 	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
 	if err != nil {
