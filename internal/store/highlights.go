@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -30,12 +31,22 @@ func (s *Store) AddHighlight(tweetID, source, quote string, now time.Time) (High
 	h := Highlight{TweetID: tweetID, Source: source, Quote: quote, CreatedAt: time.UnixMilli(now.UnixMilli())}
 	err := s.db.QueryRow(`INSERT INTO highlights (tweet_id, source, quote, created_at) VALUES (?, ?, ?, ?) RETURNING id`,
 		tweetID, source, quote, now.UnixMilli()).Scan(&h.ID)
-	return h, err
+	if err != nil {
+		return h, err
+	}
+	return h, s.indexNotes(tweetID)
 }
 
 func (s *Store) DeleteHighlight(id int64) error {
-	_, err := s.db.Exec(`DELETE FROM highlights WHERE id = ?`, id)
-	return err
+	var tweetID string
+	err := s.db.QueryRow(`DELETE FROM highlights WHERE id = ? RETURNING tweet_id`, id).Scan(&tweetID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return s.indexNotes(tweetID)
 }
 
 // Highlights returns a post's highlights, oldest first.

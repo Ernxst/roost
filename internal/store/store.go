@@ -100,6 +100,11 @@ CREATE TABLE highlights (
 	created_at INTEGER NOT NULL
 );
 CREATE INDEX highlights_tweet ON highlights (tweet_id);
+`, `
+CREATE VIRTUAL TABLE notes_fts USING fts5(text, tokenize = 'unicode61 remove_diacritics 2');
+INSERT INTO notes_fts (rowid, text)
+	SELECT t.rowid, b.note || ' ' || coalesce((SELECT group_concat(h.quote, ' ') FROM highlights h WHERE h.tweet_id = t.id), '')
+	FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id;
 `}
 
 // Open opens the library at path, creating and migrating it as needed.
@@ -335,19 +340,21 @@ func (s *Store) List(q Query) (ListResult, error) {
 	} else {
 		where = append(where, "b.removed_at IS NULL")
 	}
-	// Words match the post, the rest of its thread or a page it links to.
+	// Words match the post, the rest of its thread, a page it links to, or
+	// the user's own note and highlights.
 	const matches = `(t.rowid IN (SELECT rowid FROM tweets_fts WHERE tweets_fts MATCH ?)
 		OR t.rowid IN (SELECT rowid FROM threads_fts WHERE threads_fts MATCH ?)
+		OR t.rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?)
 		OR EXISTS (SELECT 1 FROM json_each(t.data, '$.links') je JOIN links l ON l.url = json_extract(je.value, '$.expanded')
 			WHERE l.rowid IN (SELECT rowid FROM links_fts WHERE links_fts MATCH ?)))`
 	if m := ftsTerms(srch.words); m != "" {
 		where = append(where, matches)
-		args = append(args, m, m, m)
+		args = append(args, m, m, m, m)
 	}
 	for _, w := range srch.notWords {
 		m := ftsTerms([]string{w})
 		where = append(where, "NOT "+matches)
-		args = append(args, m, m, m)
+		args = append(args, m, m, m, m)
 	}
 	where = append(where, srch.clauses...)
 	args = append(args, srch.args...)
@@ -563,7 +570,21 @@ func (s *Store) SetInCollection(tweetID string, collectionID int64, in bool, now
 }
 
 func (s *Store) SetNote(tweetID, note string) error {
-	_, err := s.db.Exec(`UPDATE bookmarks SET note = ? WHERE tweet_id = ?`, strings.TrimSpace(note), tweetID)
+	if _, err := s.db.Exec(`UPDATE bookmarks SET note = ? WHERE tweet_id = ?`, strings.TrimSpace(note), tweetID); err != nil {
+		return err
+	}
+	return s.indexNotes(tweetID)
+}
+
+// indexNotes makes the words the user wrote about a post, in its note and
+// highlights, searchable.
+func (s *Store) indexNotes(tweetID string) error {
+	if _, err := s.db.Exec(`DELETE FROM notes_fts WHERE rowid = (SELECT rowid FROM tweets WHERE id = ?)`, tweetID); err != nil {
+		return err
+	}
+	_, err := s.db.Exec(`INSERT INTO notes_fts (rowid, text)
+		SELECT t.rowid, b.note || ' ' || coalesce((SELECT group_concat(h.quote, ' ') FROM highlights h WHERE h.tweet_id = t.id), '')
+		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id WHERE t.id = ?`, tweetID)
 	return err
 }
 

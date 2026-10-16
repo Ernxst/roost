@@ -168,6 +168,7 @@ func TestSearchOperators(t *testing.T) {
 		"has:video":                          {"2"},
 		"has:media -has:video":               {"3"},
 		"has:note":                           {"3"},
+		"check":                              {"3"},
 		`in:"reading list"`:                  {"1"},
 		"in:none":                            {"3", "2"},
 		"-in:any engines":                    {"3"},
@@ -366,9 +367,16 @@ func TestHighlights(t *testing.T) {
 	if len(all) != 2 || all[0].Quote != "triangles" || all[0].Tweet == nil || all[0].Tweet.ID != "1" {
 		t.Errorf("all = %+v", all)
 	}
+	if got := ids(t, s, Query{Search: "triang"}); !equal(got, []string{"1"}) {
+		t.Errorf("search for a highlighted word = %v", got)
+	}
 	s.DeleteHighlight(h.ID)
 	if hs, _ := s.Highlights("1"); len(hs) != 1 {
 		t.Errorf("after delete = %+v", hs)
+	}
+	s.DeleteHighlight(all[0].ID)
+	if got := ids(t, s, Query{Search: "triangles"}); len(got) != 0 {
+		t.Errorf("search still finds a deleted highlight: %v", got)
 	}
 }
 

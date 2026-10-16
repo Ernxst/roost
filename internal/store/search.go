@@ -7,8 +7,9 @@ import (
 	"unicode"
 )
 
-// A search is plain words, matched as prefixes against the text, author and
-// quoted post, mixed with operators:
+// A search is plain words, matched as prefixes against the post, its author
+// and quoted post, its thread, the pages it links to, and the user's note and
+// highlights, mixed with operators:
 //
 //	from:handle            posts by that author
 //	has:media|photo|video|gif|link|article|quote|note|thread|highlight
