@@ -178,6 +178,49 @@ const edgeCases: Bookmark[] = [
   bookmark(tweet("fixture-worst-17", emoji, "Set aside from sorting: it waits outside the queue."), { asideAt: iso(-DAY) }),
 ];
 
+// A believable library for screenshots: made-up people, everyday posts and
+// counts of the size a year of bookmarking reaches.
+const SAMPLE_COLLECTIONS: Collection[] = [
+  { id: 1, name: "Design", hue: 28, query: "", count: 0 },
+  { id: 2, name: "Engineering", hue: 250, query: "", count: 0 },
+  { id: 3, name: "Typography", hue: 320, query: "", count: 0 },
+  { id: 4, name: "Reading list", hue: 145, query: "", count: 0 },
+  { id: 5, name: "Recipes", hue: 75, query: "", count: 0 },
+  { id: 6, name: "Long reads", hue: 195, query: "has:link -is:opened", count: 0 },
+];
+const SAMPLE_AUTHORS: Author[] = [
+  { handle: "maren_builds", name: "Maren Holt", avatar: "", count: 0 },
+  { handle: "tobiaswrites", name: "Tobias Reyes", avatar: "", count: 0 },
+  { handle: "inkandpixel", name: "Ines Carvalho", avatar: "", count: 0 },
+  { handle: "dkwan", name: "Daniel Kwan", avatar: "", count: 0 },
+  { handle: "saltfatpaper", name: "Priya Raman", avatar: "", count: 0 },
+  { handle: "olu_ships", name: "Olu Adeyemi", avatar: "", count: 0 },
+];
+const [maren, tobias, ines, daniel, priya, olu] = SAMPLE_AUTHORS as [Author, Author, Author, Author, Author, Author];
+const sampleEssay = {
+  short: "https://t.co/k3pt4l4t3r",
+  expanded: "https://essays.example.org/the-read-later-pile",
+  display: "essays.example.org/the-read-later…",
+};
+const samplePosts: Bookmark[] = [
+  bookmark(tweet("sample-01", maren, "The best onboarding I've seen this year has no tour at all. The empty state shows one sentence and one button, and the second screen is already your own data.", iso(-2 * 60 * 60 * 1000)), { collections: [1] }),
+  bookmark(tweet("sample-02", tobias, `Everyone has a read-later pile they never read. I wrote about why, and the three habits that finally emptied mine: ${sampleEssay.short}`, iso(-9 * 60 * 60 * 1000), { links: [sampleEssay] }), { collections: [4, 6], note: "Try the Sunday sort: twenty minutes, file or let go." }),
+  bookmark(tweet("sample-03", ines, "Optical sizes are the quiet win of variable fonts. Set your captions at the caption size and they stop looking like shrunken body text.", iso(-1 * DAY)), { collections: [3] }),
+  bookmark(tweet("sample-04", daniel, "A thread on how we cut our test suite from 14 minutes to 90 seconds, without deleting a single test. 1/", iso(-2 * DAY)), { collections: [2], threadLength: 9 }),
+  bookmark(tweet("sample-05", priya, "Brown the butter, then let it cool before it goes into the dough. That one change made these the best cookies I've baked.", iso(-3 * DAY))),
+  bookmark(tweet("sample-06", olu, "Ship the boring version first. You learn more from one week of people using it than from a month of polishing the version in your head.", iso(-4 * DAY), {
+    quoted: tweet("sample-06-q", maren, "What's the best product advice you got early on?", iso(-5 * DAY)),
+  }), { collections: [1, 2] }),
+  bookmark(tweet("sample-07", ines, "Hanging punctuation in CSS is finally usable in Safari. Pull quotes look so much calmer with the opening mark outside the measure.", iso(-6 * DAY)), { collections: [3, 1] }),
+  bookmark(tweet("sample-08", tobias, "Reading list for the autumn: two novels, one book on cities and one I've started three times and will finish this time.", iso(-8 * DAY)), { collections: [4] }),
+];
+const sampleFiller: Bookmark[] = Array.from({ length: 334 }, (_, i) => {
+  const author = SAMPLE_AUTHORS[i % SAMPLE_AUTHORS.length]!;
+  return bookmark(tweet(`sample-old-${i}`, author, "An older post worth keeping.", iso(-(10 + i) * DAY)), {
+    collections: i % 4 === 3 ? [] : [(i % 5) + 1],
+  });
+});
+
 const fillerAuthors = [longName, shortName, oneLetter, vietnamese, cjk, rtl, emoji, maxName, bot];
 
 function generated(count: number, prefix: string, from: number, withMedia: boolean): Bookmark[] {
@@ -207,9 +250,14 @@ const library: Bookmark[] =
       ? [oneItem]
       : fixtureMode === "thousand"
         ? generated(1000, "fixture-thousand", 1, true)
-        : [];
+        : fixtureMode === "sample"
+          ? [...samplePosts, ...sampleFiller]
+          : [];
 
-const collections: Collection[] = fixtureMode === "empty" ? [] : COLLECTIONS.map((c) => ({ ...c, count: library.filter((b) => b.collections.includes(c.id)).length }));
+const collections: Collection[] =
+  fixtureMode === "empty"
+    ? []
+    : (fixtureMode === "sample" ? SAMPLE_COLLECTIONS : COLLECTIONS).map((c) => ({ ...c, count: library.filter((b) => b.collections.includes(c.id)).length }));
 
 const fillerNames = ["Mira Okonkwo", "Tomasz Zieliński", "Sakura Yamamoto-Brennan", "Kwame Mensah", "Inès Lefèvre", "Mateus Araújo", "Siobhán Ní Bhriain", "Rafael Domínguez"];
 const authors: Author[] =
@@ -217,7 +265,9 @@ const authors: Author[] =
     ? []
     : fixtureMode === "one"
       ? [{ ...shortName, count: 1 }]
-      : [
+      : fixtureMode === "sample"
+        ? SAMPLE_AUTHORS.map((a) => ({ ...a, count: library.filter((b) => b.tweet.authorHandle === a.handle).length })).sort((a, b) => b.count - a.count)
+        : [
           ...AUTHORS,
           ...Array.from({ length: (fixtureMode === "thousand" ? 1000 : 1284) - AUTHORS.length }, (_, i) => ({
             handle: `reader${String(i + 1).padStart(4, "0")}`,
@@ -365,6 +415,7 @@ const duplicates: Duplicates[] =
 function revisit(): Revisit {
   if (fixtureMode === "empty") return { onThisDay: [], unopened: [], random: [] };
   if (fixtureMode === "one") return { onThisDay: [], unopened: [oneItem], random: [oneItem] };
+  if (fixtureMode === "sample") return { onThisDay: samplePosts.slice(0, 2), unopened: samplePosts.slice(2, 5), random: samplePosts.slice(5) };
   const shuffled = [...library].sort(() => Math.random() - 0.5);
   return { onThisDay: edgeCases.slice(0, 6), unopened: edgeCases.slice(6, 12), random: shuffled.slice(0, 6) };
 }

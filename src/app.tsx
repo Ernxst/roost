@@ -130,6 +130,7 @@ function Notice({ inert }: { inert: boolean }) {
 
 const FIXTURE_MODES: { mode: FixtureMode; label: string }[] = [
   { mode: "demo", label: "Demo data" },
+  { mode: "sample", label: "Sample" },
   { mode: "worst", label: "Worst case" },
   { mode: "empty", label: "Empty" },
   { mode: "one", label: "One" },
