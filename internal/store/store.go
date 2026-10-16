@@ -66,6 +66,8 @@ CREATE TABLE syncs (
 	reached_end INTEGER NOT NULL,
 	error TEXT NOT NULL DEFAULT ''
 );
+`, `
+ALTER TABLE collections ADD COLUMN query TEXT NOT NULL DEFAULT '';
 `}
 
 // Open opens the library at path, creating and migrating it as needed.
@@ -193,24 +195,41 @@ type ListResult struct {
 }
 
 func (s *Store) List(q Query) (ListResult, error) {
-	where := []string{"b.removed_at IS NULL"}
-	if q.Removed {
-		where[0] = "b.removed_at IS NOT NULL"
-	}
+	text := q.Search
+	var where []string
 	var args []any
-	from := "bookmarks b JOIN tweets t ON t.id = b.tweet_id"
-	if match := ftsQuery(q.Search); match != "" {
-		from += " JOIN tweets_fts f ON f.rowid = t.rowid"
-		where = append(where, "tweets_fts MATCH ?")
-		args = append(args, match)
-	}
 	switch {
 	case q.Collection == Unsorted:
 		where = append(where, "NOT EXISTS (SELECT 1 FROM collection_items ci WHERE ci.tweet_id = b.tweet_id)")
 	case q.Collection > 0:
-		where = append(where, "EXISTS (SELECT 1 FROM collection_items ci WHERE ci.tweet_id = b.tweet_id AND ci.collection_id = ?)")
-		args = append(args, q.Collection)
+		var smart string
+		if err := s.db.QueryRow(`SELECT query FROM collections WHERE id = ?`, q.Collection).Scan(&smart); err != nil {
+			return ListResult{}, fmt.Errorf("find collection %d: %w", q.Collection, err)
+		}
+		if smart != "" {
+			text = smart + " " + text
+		} else {
+			where = append(where, "EXISTS (SELECT 1 FROM collection_items ci WHERE ci.tweet_id = b.tweet_id AND ci.collection_id = ?)")
+			args = append(args, q.Collection)
+		}
 	}
+	srch := parseSearch(text)
+	if q.Removed || srch.gone {
+		where = append(where, "b.removed_at IS NOT NULL")
+	} else {
+		where = append(where, "b.removed_at IS NULL")
+	}
+	if m := ftsTerms(srch.words); m != "" {
+		where = append(where, "t.rowid IN (SELECT rowid FROM tweets_fts WHERE tweets_fts MATCH ?)")
+		args = append(args, m)
+	}
+	for _, w := range srch.notWords {
+		where = append(where, "t.rowid NOT IN (SELECT rowid FROM tweets_fts WHERE tweets_fts MATCH ?)")
+		args = append(args, ftsTerms([]string{w}))
+	}
+	where = append(where, srch.clauses...)
+	args = append(args, srch.args...)
+	from := "bookmarks b JOIN tweets t ON t.id = b.tweet_id"
 	if q.Author != "" {
 		where = append(where, "t.author_handle = ? COLLATE NOCASE")
 		args = append(args, q.Author)
@@ -265,32 +284,22 @@ func (s *Store) List(q Query) (ListResult, error) {
 	return res, rows.Err()
 }
 
-// ftsQuery turns what the user typed into an FTS5 query that matches every
-// word as a prefix.
-func ftsQuery(search string) string {
-	var terms []string
-	for _, word := range strings.Fields(search) {
-		word = strings.ReplaceAll(word, `"`, "")
-		if word != "" {
-			terms = append(terms, `"`+word+`"*`)
-		}
-	}
-	return strings.Join(terms, " ")
-}
-
 type Collection struct {
-	ID    int64  `json:"id"`
-	Name  string `json:"name"`
-	Hue   int    `json:"hue"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	Hue  int    `json:"hue"`
+	// Query makes a smart collection: it holds the bookmarks matching this
+	// search instead of the ones filed into it.
+	Query string `json:"query"`
 	Count int    `json:"count"`
 }
 
 func (s *Store) Collections() ([]Collection, error) {
 	rows, err := s.db.Query(`
-		SELECT c.id, c.name, c.hue,
+		SELECT c.id, c.name, c.hue, c.query,
 			(SELECT count(*) FROM collection_items ci JOIN bookmarks b ON b.tweet_id = ci.tweet_id
 			 WHERE ci.collection_id = c.id AND b.removed_at IS NULL)
-		FROM collections c ORDER BY c.name COLLATE NOCASE`)
+		FROM collections c ORDER BY c.query != '', c.name COLLATE NOCASE`)
 	if err != nil {
 		return nil, err
 	}
@@ -298,34 +307,48 @@ func (s *Store) Collections() ([]Collection, error) {
 	out := []Collection{}
 	for rows.Next() {
 		var c Collection
-		if err := rows.Scan(&c.ID, &c.Name, &c.Hue, &c.Count); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Hue, &c.Query, &c.Count); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	for i, c := range out {
+		if c.Query != "" {
+			res, err := s.List(Query{Collection: c.ID, Limit: 1})
+			if err != nil {
+				return nil, err
+			}
+			out[i].Count = res.Total
+		}
+	}
+	return out, nil
 }
 
-func (s *Store) CreateCollection(name string, hue int, now time.Time) (Collection, error) {
+// CreateCollection makes a collection; a non-empty query makes it smart.
+func (s *Store) CreateCollection(name string, hue int, query string, now time.Time) (Collection, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return Collection{}, errors.New("a collection needs a name")
 	}
-	c := Collection{Name: name, Hue: hue}
-	err := s.db.QueryRow(`INSERT INTO collections (name, hue, created_at) VALUES (?, ?, ?) RETURNING id`,
-		name, hue, now.UnixMilli()).Scan(&c.ID)
+	c := Collection{Name: name, Hue: hue, Query: strings.TrimSpace(query)}
+	err := s.db.QueryRow(`INSERT INTO collections (name, hue, query, created_at) VALUES (?, ?, ?, ?) RETURNING id`,
+		name, hue, c.Query, now.UnixMilli()).Scan(&c.ID)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
 		return c, fmt.Errorf("a collection named %q already exists", name)
 	}
 	return c, err
 }
 
-func (s *Store) UpdateCollection(id int64, name string, hue int) error {
+func (s *Store) UpdateCollection(id int64, name string, hue int, query string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("a collection needs a name")
 	}
-	_, err := s.db.Exec(`UPDATE collections SET name = ?, hue = ? WHERE id = ?`, name, hue, id)
+	_, err := s.db.Exec(`UPDATE collections SET name = ?, hue = ?, query = ? WHERE id = ?`, name, hue, strings.TrimSpace(query), id)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
 		return fmt.Errorf("a collection named %q already exists", name)
 	}
@@ -339,6 +362,13 @@ func (s *Store) DeleteCollection(id int64) error {
 
 // SetInCollection adds the post to the collection or takes it out.
 func (s *Store) SetInCollection(tweetID string, collectionID int64, in bool, now time.Time) error {
+	var smart string
+	if err := s.db.QueryRow(`SELECT query FROM collections WHERE id = ?`, collectionID).Scan(&smart); err != nil {
+		return fmt.Errorf("find collection %d: %w", collectionID, err)
+	}
+	if smart != "" {
+		return errors.New("a smart collection holds whatever matches its search; posts can't be filed into it")
+	}
 	var err error
 	if in {
 		_, err = s.db.Exec(`INSERT OR IGNORE INTO collection_items (collection_id, tweet_id, added_at) VALUES (?, ?, ?)`,

@@ -11,6 +11,7 @@ import {
   items,
   loading,
   loadMore,
+  manual,
   mediaOnly,
   opened,
   progress,
@@ -50,7 +51,19 @@ export function App() {
   );
 }
 
-function RailItem({ target, label, count, hue }: { target: View; label: string; count?: number; hue?: number }) {
+function RailItem({
+  target,
+  label,
+  count,
+  hue,
+  smart,
+}: {
+  target: View;
+  label: string;
+  count?: number;
+  hue?: number;
+  smart?: string;
+}) {
   const current = same(view.value, target);
   return (
     <li>
@@ -59,8 +72,9 @@ function RailItem({ target, label, count, hue }: { target: View; label: string; 
         aria-current={current ? "page" : undefined}
         onClick={() => (view.value = target)}
         style={hue === undefined ? undefined : { "--hue": ink(hue) }}
+        title={smart ? `Smart collection: ${smart}` : undefined}
       >
-        {hue !== undefined && <span class="tab" aria-hidden="true" />}
+        {hue !== undefined && <span class={smart ? "tab smart" : "tab"} aria-hidden="true" />}
         <span class="label">{label}</span>
         {count !== undefined && <span class="count">{count}</span>}
       </button>
@@ -103,7 +117,14 @@ function Rail() {
       <h2 class="rail-heading">Collections</h2>
       <ul class="rail-list">
         {collections.value.map((c) => (
-          <RailItem key={c.id} target={{ kind: "collection", id: c.id }} label={c.name} count={c.count} hue={c.hue} />
+          <RailItem
+            key={c.id}
+            target={{ kind: "collection", id: c.id }}
+            label={c.name}
+            count={c.count}
+            hue={c.hue}
+            smart={c.query || undefined}
+          />
         ))}
       </ul>
       {adding.value ? (
@@ -187,9 +208,10 @@ function Toolbar() {
     return ph === "loading" || ph === "reading" || ph === "login";
   });
   const input = useRef<HTMLInputElement>(null);
+  const focused = useSignal(false);
   return (
     <header class="toolbar">
-      <div class="search">
+      <div class="search" onFocusIn={() => (focused.value = true)} onFocusOut={() => (focused.value = false)}>
         <label for="search" class="sr-only">
           Search bookmarks
         </label>
@@ -211,9 +233,12 @@ function Toolbar() {
           placeholder={`Search ${stats.value?.total ?? ""} kept posts`}
           autoComplete="off"
           spellcheck={false}
+          aria-describedby="search-hints"
         />
         <kbd aria-hidden="true">/</kbd>
+        <SearchHints open={focused.value && !search.value} input={input} />
       </div>
+      {search.value.trim() && <SaveSearch />}
       <button class="chip" aria-pressed={mediaOnly.value} onClick={() => (mediaOnly.value = !mediaOnly.value)}>
         With media
       </button>
@@ -234,6 +259,80 @@ function Toolbar() {
         </div>
       </div>
     </header>
+  );
+}
+
+const HINTS: [string, string][] = [
+  ["from:", "posts by an author"],
+  ["has:video", "also photo, gif, link, quote, note"],
+  ["in:", "in a collection; in:none for unsorted"],
+  ["-", "leave out a word or filter"],
+  ["before:2025-01-01", "or after:, by post date"],
+  ["is:gone", "removed on X"],
+];
+
+function SearchHints({ open, input }: { open: boolean; input: { current: HTMLInputElement | null } }) {
+  return (
+    <div id="search-hints" class="hints" hidden={!open}>
+      <p class="hints-title">Narrow it down</p>
+      <ul>
+        {HINTS.map(([op, what]) => (
+          <li key={op}>
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                search.value = op;
+                input.current?.focus();
+              }}
+            >
+              <code>{op}</code>
+              <span>{what}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SaveSearch() {
+  const naming = useSignal(false);
+  const name = useSignal("");
+  async function save(e: Event) {
+    e.preventDefault();
+    try {
+      const c = await createCollection(name.value, search.value);
+      naming.value = false;
+      name.value = "";
+      search.value = "";
+      view.value = { kind: "collection", id: c.id };
+    } catch (err) {
+      announce(String(err).replace(/^Error: /, ""));
+    }
+  }
+  if (!naming.value) {
+    return (
+      <button class="chip" onClick={() => (naming.value = true)}>
+        Save search
+      </button>
+    );
+  }
+  return (
+    <form class="save-search" onSubmit={save}>
+      <label for="save-search" class="sr-only">
+        Smart collection name
+      </label>
+      <input
+        id="save-search"
+        value={name.value}
+        onInput={(e) => (name.value = e.currentTarget.value)}
+        onKeyDown={(e) => e.key === "Escape" && (naming.value = false)}
+        placeholder="Name this search…"
+        autoComplete="off"
+        ref={(el) => el?.focus()}
+      />
+    </form>
   );
 }
 
@@ -465,8 +564,8 @@ function Sheet() {
 
       <fieldset class="file-under">
         <legend>File under</legend>
-        {collections.value.length === 0 && <p class="hint">Make a collection in the sidebar to file posts.</p>}
-        {collections.value.map((c, i) => (
+        {manual().length === 0 && <p class="hint">Make a collection in the sidebar to file posts.</p>}
+        {manual().map((c, i) => (
           <label key={c.id} class="check" style={{ "--hue": ink(c.hue) }}>
             <input type="checkbox" checked={b.collections.includes(c.id)} onChange={() => toggleCollection(b, c.id)} />
             <span>{c.name}</span>
@@ -528,7 +627,7 @@ function useKeyboard() {
       } else if (e.key === "o" && current) {
         Library.open(current.tweet.url);
       } else if (/^[1-9]$/.test(e.key) && current) {
-        const c = collections.value[Number(e.key) - 1];
+        const c = manual()[Number(e.key) - 1];
         if (c) toggleCollection(current, c.id);
       }
     }

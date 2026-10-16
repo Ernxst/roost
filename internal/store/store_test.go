@@ -2,6 +2,7 @@ package store
 
 import (
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -106,11 +107,11 @@ func TestCollections(t *testing.T) {
 	now := time.Unix(1000, 0)
 	s.Ingest([]xparse.Entry{entry("1", 10, "a", false), entry("2", 20, "b", false)}, now)
 
-	c, err := s.CreateCollection("  Reading ", 30, now)
+	c, err := s.CreateCollection("  Reading ", 30, "", now)
 	if err != nil || c.Name != "Reading" {
 		t.Fatalf("create = %+v, %v", c, err)
 	}
-	if _, err := s.CreateCollection("reading", 40, now); err == nil {
+	if _, err := s.CreateCollection("reading", 40, "", now); err == nil {
 		t.Fatal("duplicate name (ignoring case) was accepted")
 	}
 	if err := s.SetInCollection("1", c.ID, true, now); err != nil {
@@ -136,5 +137,64 @@ func TestCollections(t *testing.T) {
 	}
 	if got := ids(t, s, Query{Collection: Unsorted}); !equal(got, []string{"2", "1"}) {
 		t.Fatalf("unsorted after delete = %v", got)
+	}
+}
+
+func TestSearchOperators(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	day := func(y, m, d int) time.Time { return time.Date(y, time.Month(m), d, 12, 0, 0, 0, time.Local) }
+	mk := func(id, handle, text string, at time.Time, media ...xparse.Media) xparse.Entry {
+		idx, _ := strconv.ParseInt(id, 10, 64)
+		return xparse.Entry{SortIndex: idx, Tweet: xparse.Tweet{ID: id, AuthorHandle: handle, AuthorName: handle, Text: text, CreatedAt: at, Media: media, Raw: []byte("{}")}}
+	}
+	s.Ingest([]xparse.Entry{
+		mk("1", "ada", "engines and looms", day(2024, 5, 1)),
+		mk("2", "bob", "a video of looms", day(2025, 2, 1), xparse.Media{Kind: "video"}),
+		mk("3", "ada", "photos of engines", day(2025, 6, 1), xparse.Media{Kind: "photo"}),
+	}, now)
+	reading, _ := s.CreateCollection("Reading list", 10, "", now)
+	s.SetInCollection("1", reading.ID, true, now)
+	s.SetNote("3", "check this")
+
+	cases := map[string][]string{
+		"from:@ada":                          {"3", "1"},
+		"looms -video":                       {"1"},
+		"has:video":                          {"2"},
+		"has:media -has:video":               {"3"},
+		"has:note":                           {"3"},
+		`in:"reading list"`:                  {"1"},
+		"in:none":                            {"3", "2"},
+		"-in:any engines":                    {"3"},
+		"before:2025-01-01":                  {"1"},
+		"after:2025-01-31 before:2025-06-30": {"3", "2"},
+		"has:nonsense":                       {},
+	}
+	for q, want := range cases {
+		if got := ids(t, s, Query{Search: q}); !equal(got, want) {
+			t.Errorf("search %q = %v, want %v", q, got, want)
+		}
+	}
+
+	smart, err := s.CreateCollection("Ada's engines", 20, "from:ada engines", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ids(t, s, Query{Collection: smart.ID}); !equal(got, []string{"3", "1"}) {
+		t.Errorf("smart collection = %v", got)
+	}
+	if got := ids(t, s, Query{Collection: smart.ID, Search: "photos"}); !equal(got, []string{"3"}) {
+		t.Errorf("search within smart collection = %v", got)
+	}
+	if err := s.SetInCollection("2", smart.ID, true, now); err == nil {
+		t.Error("filed a post into a smart collection")
+	}
+	cols, _ := s.Collections()
+	if len(cols) != 2 || cols[1].ID != smart.ID || cols[1].Count != 2 {
+		t.Errorf("collections = %+v, want the smart one last with 2 posts", cols)
 	}
 }

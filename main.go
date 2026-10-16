@@ -74,20 +74,22 @@ func (l *Library) Authors(limit int) ([]store.Author, error) {
 	return s.Authors(limit)
 }
 
-func (l *Library) CreateCollection(name string, hue int) (store.Collection, error) {
+// CreateCollection makes a collection; a non-empty query makes it a smart
+// collection that holds whatever matches that search.
+func (l *Library) CreateCollection(name string, hue int, query string) (store.Collection, error) {
 	s, err := l.store()
 	if err != nil {
 		return store.Collection{}, err
 	}
-	return s.CreateCollection(name, hue, time.Now())
+	return s.CreateCollection(name, hue, query, time.Now())
 }
 
-func (l *Library) UpdateCollection(id int64, name string, hue int) error {
+func (l *Library) UpdateCollection(id int64, name string, hue int, query string) error {
 	s, err := l.store()
 	if err != nil {
 		return err
 	}
-	return s.UpdateCollection(id, name, hue)
+	return s.UpdateCollection(id, name, hue, query)
 }
 
 func (l *Library) DeleteCollection(id int64) error {

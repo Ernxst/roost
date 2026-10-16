@@ -23,6 +23,7 @@ export interface Collection {
   id: number;
   name: string;
   hue: number;
+  query: string;
   count: number;
 }
 
@@ -109,8 +110,12 @@ export const Library = {
   collections(): Promise<Collection[]> {
     return call("Library.Collections");
   },
-  createCollection(name: string, hue: number): Promise<Collection> {
-    return call("Library.CreateCollection", name, hue);
+  /**
+   * CreateCollection makes a collection; a non-empty query makes it a smart
+   * collection that holds whatever matches that search.
+   */
+  createCollection(name: string, hue: number, query: string): Promise<Collection> {
+    return call("Library.CreateCollection", name, hue, query);
   },
   deleteCollection(id: number): Promise<void> {
     return call("Library.DeleteCollection", id);
@@ -149,8 +154,8 @@ export const Library = {
   sync(full: boolean): Promise<void> {
     return call("Library.Sync", full);
   },
-  updateCollection(id: number, name: string, hue: number): Promise<void> {
-    return call("Library.UpdateCollection", id, name, hue);
+  updateCollection(id: number, name: string, hue: number, query: string): Promise<void> {
+    return call("Library.UpdateCollection", id, name, hue, query);
   },
 } as const;
 

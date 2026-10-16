@@ -139,9 +139,12 @@ export async function saveNote(b: Bookmark, note: string) {
 // Hues for new collections, spaced so neighbours stay distinct.
 const HUES = [28, 145, 250, 75, 320, 195, 5, 110, 280, 50];
 
-export async function createCollection(name: string) {
+/** Collections posts can be filed into, in sidebar order. */
+export const manual = () => collections.value.filter((c) => !c.query);
+
+export async function createCollection(name: string, query = "") {
   const hue = HUES[collections.value.length % HUES.length] ?? 28;
-  const c = await Library.createCollection(name, hue);
+  const c = await Library.createCollection(name, hue, query);
   await refreshMeta();
   announce(`Created ${c.name}`);
   return c;
