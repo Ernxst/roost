@@ -1,63 +1,61 @@
 # roost
 
-roost keeps the posts you bookmark on X, on your Mac, for good. It copies
-your bookmarks into a library you can sort into collections, search, and
-read at your own pace, with their threads, pictures and linked articles.
-Posts stay in roost even after their authors delete them or X takes them
-down.
+roost copies the posts you bookmark on X to your Mac and keeps them there.
+You can sort them into collections, search them, and read them with their
+threads, pictures and linked articles. A post stays in roost after its
+author deletes it or X takes it down.
 
-You don't need to pay for X or set anything up. roost reads your bookmarks
-the same way you do, by signing in to the X website.
+You don't need a paid X account or any setup. roost signs in to the X
+website as you, and reads your bookmarks there.
 
 ![roost's feed: kept posts in three columns, with collections, rituals and the most-kept authors in the sidebar](design/screenshot.png)
 
 ## What you need
 
-- A Mac running macOS 12 Monterey or later. Apple silicon and Intel Macs
-  both work.
+- A Mac with macOS 12 Monterey or later. Apple silicon and Intel Macs both
+  work.
 - An X account with some bookmarks.
 
 ## Install
 
-1. Go to the [latest release](https://github.com/Ernxst/roost/releases/latest)
-   and, under **Assets**, download the file whose name ends in `.dmg`.
-2. Open the downloaded file. In the window that appears, drag the roost
-   icon onto the Applications folder.
-3. Open roost from your Applications folder. macOS warns that it can't
-   check roost for malicious software, because roost isn't registered
-   with Apple, which costs a yearly fee. Click **Done**.
-4. Open **System Settings**, choose **Privacy & Security**, and scroll down
-   to the message about roost. Click **Open Anyway**, then confirm with your
+1. Go to the [latest release](https://github.com/Ernxst/roost/releases/latest).
+   Under **Assets**, download the file whose name ends in `.dmg`.
+2. Open the downloaded file, and drag the roost icon onto the Applications
+   folder in the window that appears.
+3. Open roost from your Applications folder. macOS warns that it can't check
+   roost for malicious software. It shows this warning because roost isn't
+   registered with Apple, which costs a yearly fee. Click **Done**.
+4. Open **System Settings** and choose **Privacy & Security**. Scroll down to
+   the message about roost, click **Open Anyway**, and confirm with your
    password or Touch ID.
 
-You only do this once. From then on roost opens like any other app and
-updates itself.
+You only do this once. After that, roost opens like any other app and
+installs its own updates.
 
 ## Your first sync
 
 1. Click **Sync from X**.
-2. A window shows X's sign-in page. Sign in as you normally would. roost
-   remembers the sign-in, so you won't be asked again unless X signs you
-   out.
-3. roost reads your bookmarks, newest first. A large collection of
-   bookmarks takes a few minutes.
+2. A window shows X's sign-in page. Sign in as you normally do. roost
+   remembers the sign-in, so X asks again only if it signs you out.
+3. roost reads your bookmarks, newest first. Thousands of bookmarks can take a
+   few minutes.
 
-After that, click **Sync** in the top corner whenever you want the latest
-bookmarks. To have roost check on its own, open **Settings** and choose how
-often under **Background sync**. roost keeps working from its icon in the
-menu bar when you close its window, and can send you a notification when
-new bookmarks arrive.
+To get new bookmarks later, click **Sync** at the top of the window. To have
+roost sync on its own, open **Settings** and choose how often under
+**Background sync**. When you close the window, roost keeps running from its
+icon in the menu bar. Settings can also turn on a notification when new
+bookmarks arrive.
 
 ## Finding your way around
 
-- **Collections** are folders for your bookmarks. Click **+ New
-  collection** in the sidebar, then file any post into it from the post
-  itself.
-- **Sort the unsorted** shows your unfiled bookmarks one at a time. Press a
-  number key to file each one into a collection; roost suggests where each
-  one probably belongs.
+- **Collections** are folders for your bookmarks. Click **+ New collection**
+  in the sidebar. To add a post to a collection, open the post and tick the
+  collection.
+- **Sort the unsorted** shows the bookmarks that aren't in a collection yet,
+  one at a time. Press a number key to put each one in a collection. roost
+  suggests the collections it most likely belongs in.
 - **Search** finds words in posts, in the articles they link to and in your
-  own notes. A few extra words narrow it down:
+  own notes. Add these to a search to narrow it:
 
   | Type | To find |
   | --- | --- |
@@ -66,44 +64,44 @@ new bookmarks arrive.
   | `in:"Reading list"` | posts in that collection |
   | `is:unopened` | posts you haven't opened in roost yet |
 
-- **Revisit** brings back posts from this day in past years and ones you
-  never got round to.
-- **Highlights** collects passages you've marked in posts and articles.
-- **Media wall** shows every photo and video you've kept, and
-  **Duplicates** finds bookmarks that share a post, a link or a picture.
-- Open any post to read its whole thread, write yourself a note, or read a
-  linked article without leaving roost.
-- **Export** in Settings saves your whole library as notes you can open in
-  Obsidian or any other notes app.
+- **Revisit** shows posts from this date in earlier years, posts you've
+  never opened, and a random handful.
+- **Highlights** lists the passages you've marked in posts and articles.
+- **Media wall** shows every photo and video you've kept.
+- **Duplicates** finds bookmarks that share a post, a link or a picture.
+- Open a post to read its whole thread, write a note on it, or read the
+  article it links to.
+- **Export** in Settings saves your library as Markdown notes, which
+  Obsidian and most other notes apps can open.
 - Press `?` to see every keyboard shortcut.
 
 ## Updates
 
-roost checks for a new version once a day. When there is one, a window
-shows what's new and offers to restart roost with it.
-To check now, click the roost icon in the menu bar and choose **Check for
-Updates…**.
+roost checks for a new version once a day. When it finds one, a window shows
+what's new and offers to restart roost with it. To check straight away, click
+the roost icon in the menu bar and choose **Check for Updates…**.
 
 ## Privacy
 
-Your bookmarks, notes and sign-in stay on your Mac. roost connects only to
-X, to the servers X keeps its pictures on, and to the pages your bookmarks
-link to. Nothing is sent to anyone else.
+Your bookmarks, notes and X sign-in stay on your Mac. roost connects only to
+X, to the servers that hold X's pictures and videos, and to the pages your
+bookmarks link to. It sends nothing anywhere else.
 
 ## If something goes wrong
 
-- **macOS won't open roost.** Follow step 4 of Install again; the **Open
-  Anyway** button appears for about an hour after the warning.
-- **A sync fails.** roost says why and offers **Try again**. If X has
-  signed you out, it shows the sign-in page again.
-- **Some old bookmarks are marked "Missing from bookmarks".** You
-  unbookmarked them on X, or X removed them. roost keeps its copy.
+- **macOS won't open roost.** Follow step 4 of Install again. The **Open
+  Anyway** button stays in Privacy & Security for about an hour after the
+  warning.
+- **A sync fails.** roost shows why and offers **Try again**. If X has signed
+  you out, roost shows the sign-in page again.
+- **Some bookmarks are marked "Missing from bookmarks".** You removed the
+  bookmark on X, or X removed the post. roost keeps its copy.
 
 ## Remove roost
 
-Drag roost from Applications to the Bin. Your library stays in
-`~/Library/Application Support/roost`; delete that folder too if you want
-to remove your saved bookmarks.
+Drag roost from Applications to the Bin. This leaves your library in
+`~/Library/Application Support/roost`. Delete that folder too if you want to
+remove your saved bookmarks.
 
 ## Develop
 
