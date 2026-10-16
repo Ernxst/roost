@@ -8,9 +8,9 @@
   --card: light-dark(#fbf8f1, #221f19);
   --ink: light-dark(#1d1a14, #ece5d6);
   --ink-2: light-dark(#5b5446, #a89f8c);
-  --ink-3: light-dark(#7d7562, #81786a);
+  --ink-3: light-dark(#6a6350, #968d7e);
   --rule: light-dark(oklch(0.3 0.03 80 / 0.15), oklch(0.95 0.02 80 / 0.12));
-  --accent: light-dark(#c8401c, #ff7550);
+  --accent: light-dark(#b93106, #ff7550);
   --focus: light-dark(#1f5fd6, #8db4ff);
   --image-outline: light-dark(oklch(0 0 0 / 0.1), oklch(1 0 0 / 0.1));
   --shadow: light-dark(oklch(0.25 0.03 70 / 0.16), oklch(0 0 0 / 0.5));
