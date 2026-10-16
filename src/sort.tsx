@@ -128,7 +128,7 @@ export function SortMode() {
       </div>
       {!current ? (
         <div class="empty first-run">
-          <p class="lede">{loading.value ? "Dealing the next posts…" : "Nothing left to sort."}</p>
+          {loading.value ? <p class="lede">Dealing the next posts…</p> : <p class="lede dealt">Nothing left to sort.</p>}
           {!loading.value && done.value.size > 0 && (
             <button class="press quiet" onClick={() => ((done.value = new Set()), reload())}>
               Go round again

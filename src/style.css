@@ -822,7 +822,9 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 @keyframes deal {
   from { opacity: 0; translate: 0 10px; rotate: -0.6deg; }
 }
-@media (prefers-reduced-motion: reduce) { .card.big { animation: none; } }
+/* The last card dealt gives way to the finish line with the same gesture. */
+.lede.dealt { animation: deal 220ms var(--ease); }
+@media (prefers-reduced-motion: reduce) { .card.big, .lede.dealt { animation: none; } }
 
 .sort-keys { position: sticky; top: calc(var(--titlebar) + 12px); display: grid; gap: 10px; }
 .sort-keys .hints-title { margin: 0; }
