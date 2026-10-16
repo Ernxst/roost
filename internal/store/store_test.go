@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -9,6 +10,41 @@ import (
 	"roost/internal/links"
 	"roost/internal/xparse"
 )
+
+func TestMigrationFailureRollsBackSchemaAndVersion(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lib.db")
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TABLE collections (id INTEGER PRIMARY KEY)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Open(path); err == nil {
+		t.Fatal("migration succeeded despite an existing collections table")
+	}
+
+	db, err = sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var version int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	var tweets int
+	if err := db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'tweets'`).Scan(&tweets); err != nil {
+		t.Fatal(err)
+	}
+	if version != 0 || tweets != 0 {
+		t.Fatalf("failed migration left version %d and tweets table count %d", version, tweets)
+	}
+}
 
 func entry(id string, idx int64, text string, media bool) xparse.Entry {
 	t := xparse.Tweet{ID: id, AuthorHandle: "ada", AuthorName: "Ada Lovelace", Text: text, CreatedAt: time.Unix(1, 0), Raw: []byte("{}")}

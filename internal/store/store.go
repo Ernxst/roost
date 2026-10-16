@@ -128,13 +128,24 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("open library: %w", err)
 	}
 	for i := version; i < len(migrations); i++ {
-		if _, err := db.Exec(migrations[i]); err != nil {
+		tx, err := db.Begin()
+		if err != nil {
+			db.Close()
+			return nil, fmt.Errorf("begin migration to version %d: %w", i+1, err)
+		}
+		if _, err := tx.Exec(migrations[i]); err != nil {
+			tx.Rollback()
 			db.Close()
 			return nil, fmt.Errorf("migrate library to version %d: %w", i+1, err)
 		}
-		if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
+		if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
+			tx.Rollback()
 			db.Close()
 			return nil, err
+		}
+		if err := tx.Commit(); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("commit migration to version %d: %w", i+1, err)
 		}
 	}
 	s := &Store{db: db}
