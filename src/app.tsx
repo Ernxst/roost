@@ -337,7 +337,7 @@ function Toolbar() {
               input.current?.blur();
             }
           }}
-          placeholder={stats.value ? `Search ${count(stats.value.total, "kept post")}` : "Search kept posts"}
+          placeholder={stats.value?.total ? `Search ${count(stats.value.total, "kept post")}` : "Search kept posts"}
           autoComplete="off"
           spellcheck={false}
           aria-describedby="search-hints"
