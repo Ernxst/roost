@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "mygo dev",
-    "build": "mygo build",
+    "build": "mygo build -platform darwin/universal",
     "generate": "mygo generate",
     "dev:web": "vite",
     "build:web": "tsc --noEmit && vite build",

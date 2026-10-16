@@ -12,4 +12,12 @@ export default defineConfig({
   frontendDist: "dist",
   bindings: "src/mygo.ts",
   out: "build",
+  // Installed copies update themselves from the GitHub releases of this
+  // repository. The secret key that signs them is in
+  // ~/Library/Application Support/mygo/update-keys, outside the repository.
+  updates: {
+    publicKey: "/D6mD5qdtEtOJaO0DohUAOLJptHgm7PP8wdH0qyXBtM=",
+    github: "Ernxst/roost",
+    privateKey: "~/Library/Application Support/mygo/update-keys/mygo-update.key",
+  },
 });

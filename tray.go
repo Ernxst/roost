@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/updater"
 
 	"roost/internal/store"
 )
@@ -52,6 +53,7 @@ func (l *Library) stayInMenuBar() {
 		m.sync,
 		m.status,
 		mygo.Separator(),
+		updater.MenuItem(),
 		{Label: "Quit roost", Role: mygo.RoleQuit},
 	})
 	tray, err := mygo.NewTray(mygo.TrayOptions{Icon: trayIcon(), IconIsTemplate: true, ToolTip: "roost", Menu: menu})

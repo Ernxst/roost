@@ -19,6 +19,7 @@ import (
 	"roost/internal/xsync"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/updater"
 )
 
 // SyncProgress reports each stage of a sync to the page.
@@ -561,6 +562,7 @@ func (l *Library) Open(url string) error { return mygo.Shell.OpenExternal(url) }
 func main() {
 	library := &Library{}
 	mygo.Bind(library)
+	mygo.Use(updater.Plugin)
 
 	mygo.App.WhenReady(func() {
 		dir, err := mygo.App.Path(mygo.PathUserData)
