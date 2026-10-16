@@ -32,7 +32,7 @@ const capture = `(() => {
   };
 })();`
 
-// syncPage is the window a sync drives. It stays hidden unless the user has
+// syncPage is the window a sync drives. It stays invisible unless the user has
 // to sign in to X.
 type syncPage struct{ win *mygo.Window }
 
@@ -46,7 +46,19 @@ func openSyncPage(parent *mygo.Window, url string) *syncPage {
 		Parent: parent,
 		Page:   mygo.PageOptions{PreloadScript: capture},
 	})
-	return &syncPage{win: win}
+	p := &syncPage{win: win}
+	p.conceal()
+	return p
+}
+
+// conceal keeps the window on screen but nearly transparent, click-through and
+// unfocused. X loads the next page of bookmarks only while WebKit counts the
+// page as visible, which a hidden window never is. Fully transparent is not
+// enough: with the main window hidden, macOS then reports the page hidden too.
+func (p *syncPage) conceal() {
+	p.win.SetOpacity(0.01)
+	p.win.SetIgnoreMouseEvents(true)
+	p.win.ShowInactive()
 }
 
 func (p *syncPage) URL() (string, error) { return p.win.Page().URL(), nil }
@@ -68,8 +80,14 @@ func (p *syncPage) Scroll() error {
 	return err
 }
 
-func (p *syncPage) ShowLogin() { p.win.Show(); p.win.Focus() }
-func (p *syncPage) HideLogin() { p.win.Hide() }
+func (p *syncPage) ShowLogin() {
+	p.win.SetOpacity(1)
+	p.win.SetIgnoreMouseEvents(false)
+	p.win.Show()
+	p.win.Focus()
+}
+
+func (p *syncPage) HideLogin() { p.conceal() }
 func (p *syncPage) Close()     { p.win.Destroy() }
 
 // quietPage is a sync page that never shows itself to ask for a sign-in.
