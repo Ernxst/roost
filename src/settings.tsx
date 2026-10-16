@@ -125,7 +125,7 @@ export function SettingsButton() {
                 <h3>Markdown export</h3>
                 <p class="hint">
                   One note per bookmark, with its thread, note, highlights, links and images, and one note per collection.
-                  Point it at an Obsidian vault and the links between them just work.
+                  In an Obsidian vault, each bookmark links to its collections and each collection lists its bookmarks.
                 </p>
                 <div class="row">
                   {s.exportDir && (
