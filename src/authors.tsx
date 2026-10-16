@@ -81,7 +81,7 @@ export function AuthorHead({ handle }: { handle: string }) {
   const pick = (q: string) => (search.value = search.value === q ? "" : q);
   return (
     <div class="author-head">
-      <Avatar src={a.avatar} name={a.name} size={44} />
+      <Avatar src={a.avatar} name={a.name || a.handle} size={44} />
       <div class="author-facts">
         <a class="ext" href={profile} onClick={(e) => openExternal(e, profile)}>
           @{a.handle} on X ↗
@@ -91,9 +91,9 @@ export function AuthorHead({ handle }: { handle: string }) {
             {a.collections.map(({ id, count }) => {
               const c = byId.get(id);
               if (!c) return null;
-              const q = `in:"${c.name}"`;
+              const q = `in:"${c.name.replaceAll('"', '\\"')}"`;
               return (
-                <button key={id} class="chip filed" style={{ "--hue": ink(c.hue) }} aria-pressed={search.value === q} onClick={() => pick(q)}>
+                <button key={id} class="chip filed" title={c.name} style={{ "--hue": ink(c.hue) }} aria-pressed={search.value === q} onClick={() => pick(q)}>
                   {c.name} · {count.toLocaleString()}
                 </button>
               );

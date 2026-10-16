@@ -125,6 +125,7 @@ function HighlightNote({ h, onSave }: { h: Highlight; onSave: (id: number, note:
       <textarea
         id={`hl-note-${h.id}`}
         class="highlight-note"
+        maxLength={500}
         dir="auto"
         rows={1}
         value={note.value}
@@ -200,10 +201,10 @@ export function HighlightsView() {
             <li key={h.id} class="clipping">
               <blockquote dir="auto">{h.quote}</blockquote>
               <HighlightNote h={h} onSave={(id, note) => saveHighlightNote(highlights, id, note)} />
-              <button class="clip-source" onClick={() => openPost(h.tweetId)}>
-                {h.tweet && <Avatar src={h.tweet.authorAvatar} name={h.tweet.authorName} size={18} />}
+              <button class="clip-source" disabled={!h.tweet} onClick={() => h.tweet && openPost(h.tweetId)}>
+                {h.tweet && <Avatar src={h.tweet.authorAvatar} name={h.tweet.authorName || h.tweet.authorHandle} size={18} />}
                 <span>
-                  {h.tweet?.authorName}
+                  {h.tweet ? (h.tweet.authorName || `@${h.tweet.authorHandle}`) : "Post no longer saved"}
                   {h.source && ` · ${new URL(h.source).hostname.replace(/^www\./, "")}`}
                 </span>
                 <time dateTime={h.createdAt}>{shortDate(h.createdAt)}</time>

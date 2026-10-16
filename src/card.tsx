@@ -1,6 +1,6 @@
 import { useComputed } from "@preact/signals";
 import { Component } from "preact";
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import type { Bookmark, Collection } from "./mygo";
 import { collections, cursor, opened, selected, toggleSelected } from "./state";
 import { Avatar, MediaGrid, Quoted, shortDate, Text } from "./tweet";
@@ -8,17 +8,18 @@ import { Avatar, MediaGrid, Quoted, shortDate, Text } from "./tweet";
 /** The ink colour of a collection's hue, dark enough on a card in either scheme to read as text. */
 export const ink = (hue: number) => `light-dark(oklch(0.48 0.14 ${hue}), oklch(0.68 0.14 ${hue}))`;
 
-export function Stamps({ b }: { b: Bookmark }) {
+export function Stamps({ b, compact = false }: { b: Bookmark; compact?: boolean }) {
   const byId = new Map(collections.value.map((c) => [c.id, c]));
   const cs = b.collections.map((id) => byId.get(id)).filter((c): c is Collection => !!c);
   if (cs.length === 0) return null;
   return (
-    <ul class="stamps" aria-label="Collections">
-      {cs.map((c, i) => (
+    <ul class={`stamps${compact ? " compact" : ""}`} aria-label="Collections" title={cs.map((c) => c.name).join(", ")}>
+      {(compact ? cs.slice(0, 2) : cs).map((c, i) => (
         <li key={c.id} class="stamp" style={{ "--hue": ink(c.hue), "--tilt": `${((c.id * 7 + i * 3) % 5) - 2}deg` }}>
           {c.name}
         </li>
       ))}
+      {compact && cs.length > 2 && <li class="stamp stamp-more">+{cs.length - 2}</li>}
     </ul>
   );
 }
@@ -40,6 +41,7 @@ export class Card extends Component<{ b: Bookmark }> {
 function CardBody({ b }: { b: Bookmark }) {
   const t = b.tweet;
   const ref = useRef<HTMLElement>(null);
+  const [clipped, setClipped] = useState(false);
   // Watches only whether this card holds the cursor, so moving it re-renders two cards.
   const active = useComputed(() => cursor.value === t.id).value;
   // The cursor moves by key, often with the key held down, so the feed jumps rather than glides to it.
@@ -48,6 +50,22 @@ function CardBody({ b }: { b: Bookmark }) {
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: "nearest" });
   }, [active]);
+  useEffect(() => {
+    const text = ref.current?.querySelector<HTMLElement>(":scope > .text");
+    if (!text) {
+      setClipped(false);
+      return;
+    }
+    const measure = () => setClipped(text.scrollHeight > text.clientHeight + 1);
+    const observer = new ResizeObserver(measure);
+    observer.observe(text);
+    window.addEventListener("resize", measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [t.id, t.text]);
   return (
     <article
       ref={ref}
@@ -55,22 +73,23 @@ function CardBody({ b }: { b: Bookmark }) {
       aria-labelledby={`by-${t.id}`}
     >
       <header class="byline">
-        <Avatar src={t.authorAvatar} name={t.authorName} />
+        <Avatar src={t.authorAvatar} name={t.authorName || t.authorHandle} />
         <span class="who" id={`by-${t.id}`}>
           <span class="name" dir="auto">{t.authorName}</span>
-          <span class="handle">@{t.authorHandle}</span>
+          <span class="handle" title={`@${t.authorHandle}`}>@{t.authorHandle}</span>
         </span>
         <time dateTime={t.createdAt}>{shortDate(t.createdAt)}</time>
         <label class="pick">
           <input type="checkbox" checked={picked} onChange={() => toggleSelected(t.id)} />
-          <span class="sr-only">Select post by {t.authorName}</span>
+          <span class="sr-only">Select post by {t.authorName || `@${t.authorHandle}`}</span>
         </label>
       </header>
       {b.threadLength > 1 && <span class="thread-tag">thread · {b.threadLength} posts</span>}
       <button class="open" onClick={() => ((opened.value = t.id), (cursor.value = t.id))}>
-        <span class="sr-only">Open post by {t.authorName}</span>
+        <span class="sr-only">Open post by {t.authorName || `@${t.authorHandle}`}</span>
       </button>
       {t.text && <Text tweet={t} />}
+      {clipped && <button class="show-more" onClick={() => ((opened.value = t.id), (cursor.value = t.id))}>Show more</button>}
       <MediaGrid media={t.media} />
       {t.quoted && <Quoted tweet={t.quoted} />}
       {b.note && <p class="note-preview" dir="auto">{b.note}</p>}

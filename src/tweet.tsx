@@ -74,8 +74,11 @@ function Linked({
     out.push(mark(text.slice(last, m.index)));
     const [token, url, mention, tag] = m;
     if (url) {
-      const l = links.get(url);
-      out.push(<Ext href={l?.expanded ?? url}>{l?.display ?? url}</Ext>);
+      let clean = url.replace(/[.,"'”’]+$/u, "");
+      while (clean.endsWith(")") && (clean.match(/\)/g)?.length ?? 0) > (clean.match(/\(/g)?.length ?? 0)) clean = clean.slice(0, -1);
+      const l = links.get(clean);
+      out.push(<Ext href={l?.expanded ?? clean}>{l?.display ?? clean}</Ext>);
+      out.push(url.slice(clean.length));
     } else if (mention) {
       out.push(<Ext href={`https://x.com/${mention.slice(1)}`}>{mention}</Ext>);
     } else if (tag) {
@@ -133,11 +136,19 @@ export function Avatar({ src, name = "", size = 28 }: { src: string; name?: stri
   if (!src || failed === src) {
     return (
       <span class="avatar blank" style={{ width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.46)}px` }} aria-hidden="true">
-        {[...name.trim()][0]?.toLocaleUpperCase()}
+        {initial(name)}
       </span>
     );
   }
   return <img class="avatar" src={cached(src)} width={size} height={size} alt="" loading="lazy" onError={() => setFailed(src)} />;
+}
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+function initial(name: string) {
+  for (const { segment } of graphemes.segment(name.trim())) {
+    if (/\p{L}/u.test(segment)) return segment.toLocaleUpperCase();
+  }
+  return "?";
 }
 
 /**

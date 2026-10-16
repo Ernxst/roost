@@ -61,11 +61,12 @@ export function WallView() {
 }
 
 function Tile({ b, m }: { b: Bookmark; m: Media }) {
+  const broken = useSignal(false);
   const t = b.tweet;
   const ratio = m.width && m.height ? Math.min(Math.max(m.width / m.height, 0.5), 2.2) : 1;
   return (
     <button class={`tile${b.removedAt ? " gone" : ""}`} style={{ aspectRatio: String(ratio) }} onClick={() => openPost(t.id)}>
-      <img src={cached(`${m.thumb}?name=small`)} alt={mediaAlternative(m)} loading="lazy" />
+      {broken.value ? <span class="tile-missing" aria-label="Image unavailable">Image unavailable</span> : <img src={cached(`${m.thumb}?name=small`)} alt={mediaAlternative(m)} loading="lazy" onError={() => (broken.value = true)} />}
       {m.kind !== "photo" && (
         <span class="badge" aria-hidden="true">
           {m.kind === "video" ? "▶" : "GIF"}
@@ -76,7 +77,7 @@ function Tile({ b, m }: { b: Bookmark; m: Media }) {
       </span>
       {b.removedAt && (
         <span class="tile-gone">
-          <span class="sr-only">, </span>missing from bookmarks
+          <span class="sr-only">, </span>Missing
         </span>
       )}
     </button>
@@ -113,13 +114,13 @@ export function DuplicatesView() {
                 {g.bookmarks.map((b) => (
                   <li key={b.tweet.id}>
                     <button class="dupe-row" onClick={() => openPost(b.tweet.id)}>
-                      <Avatar src={b.tweet.authorAvatar} name={b.tweet.authorName} size={22} />
+                      <Avatar src={b.tweet.authorAvatar} name={b.tweet.authorName || b.tweet.authorHandle} size={22} />
                       <span class="dupe-text">
                         <span class="name" dir="auto">{b.tweet.authorName}</span> {b.tweet.text.replace(/https?:\/\/\S+/g, "").trim() || "(no text)"}
                       </span>
                       <time dateTime={b.tweet.createdAt}>{shortDate(b.tweet.createdAt)}</time>
                     </button>
-                    <Stamps b={b} />
+                      <Stamps b={b} compact />
                   </li>
                 ))}
               </ul>
