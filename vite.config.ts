@@ -20,7 +20,8 @@ export default defineConfig({
     // The app loads this address during `mygo dev` (devUrl in mygo.json).
     port: 5287,
     strictPort: true,
-    // The development app and the packaged builds are not the page's.
+    // The development app and the packaged builds are not part of the page,
+    // so changes to them should not reload it.
     watch: { ignored: ["**/.mygo/**", "**/build/**"] },
   },
 });

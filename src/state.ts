@@ -248,7 +248,7 @@ export async function setAside(b: Bookmark, aside: boolean) {
   refreshMeta();
 }
 
-/** Files a post into a collection, or takes it out, without the toggle's guesswork. */
+/** Files a post into a collection when `inside` is true and takes it out otherwise. */
 export async function file(b: Bookmark, collectionID: number, inside: boolean) {
   patch(b.tweet.id, (x) => ({
     ...x,

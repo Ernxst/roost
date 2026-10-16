@@ -50,7 +50,7 @@ export function CollectionEditor({ c, onClose }: { c: Collection; onClose: () =>
   async function remove() {
     try {
       await deleteCollection(c);
-      // The editor is gone with its collection; carry focus to the feed now on screen.
+      // Deleting the collection removed the editor, so move focus to the feed now on screen.
       document.getElementById("feed")?.focus({ preventScroll: true });
     } catch (err) {
       error.value = errorText(err);

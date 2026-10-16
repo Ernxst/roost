@@ -580,7 +580,6 @@ function emptyText(v: View): string {
   }
 }
 
-/** Actions on the selected bookmarks, shown while any are selected. */
 /** Saves the collection as one Markdown file to send to someone. */
 function ShareCollection({ id }: { id: number }) {
   const saving = useSignal(false);
@@ -648,6 +647,7 @@ function ShareCollection({ id }: { id: number }) {
   );
 }
 
+/** Actions on the selected bookmarks, shown while any are selected. */
 function SelectionBar() {
   const target = useSignal("");
   const n = selected.value.size;

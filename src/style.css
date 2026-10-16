@@ -101,7 +101,7 @@ kbd {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: calc(var(--titlebar) + 4px) 14px 28px;
-  /* A wash of paper keeps the material warm. */
+  /* A translucent paper tint warms the sidebar material. */
   background: color-mix(in oklab, var(--paper-deep) 55%, transparent);
   box-shadow: inset -1px 0 0 var(--rule);
 }
@@ -967,7 +967,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 @keyframes deal {
   from { opacity: 0; translate: 0 10px; rotate: -0.6deg; }
 }
-/* The last card dealt gives way to the finish line with the same gesture. */
+/* The finish line replaces the last card with the same deal animation. */
 .lede.dealt { animation: deal 220ms var(--ease); }
 @media (prefers-reduced-motion: reduce) { .card.big, .lede.dealt { animation: fade-in 160ms ease-out; } }
 

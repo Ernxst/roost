@@ -26,8 +26,8 @@ export function Stamps({ b, compact = false }: { b: Bookmark; compact?: boolean 
 
 /**
  * A feed card that re-renders only when its bookmark changes. With a thousand
- * cards on the desk, the feed re-rendering for a page load or a keypress
- * leaves every unchanged card alone.
+ * cards in the feed, a page load or a keypress re-renders the feed but leaves
+ * every unchanged card alone.
  */
 export class Card extends Component<{ b: Bookmark }> {
   shouldComponentUpdate(next: { b: Bookmark }) {

@@ -2,7 +2,7 @@ import type { Bookmark } from "./mygo";
 import { Card } from "./card";
 import { loadRevisit, revisit } from "./state";
 
-/** Revisit brings back posts worth a second look instead of letting them sink. */
+/** Revisit shows older bookmarks again, so they don't stay buried at the bottom of the feed. */
 export function RevisitView() {
   const r = revisit.value;
   return (

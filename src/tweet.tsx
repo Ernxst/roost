@@ -31,7 +31,7 @@ const languageName = (code: string) => {
 /**
  * Post text with t.co links expanded and mentions, hashtags and URLs linked.
  * A post in another language shows X's translation, with the original a
- * click away. `mark` dresses the plain runs between links, such as to show
+ * click away. `mark` wraps the plain text between links, such as to show
  * highlights.
  */
 export function Text({ tweet, mark = (s) => s }: { tweet: Tweet; mark?: (text: string) => ComponentChildren }) {
@@ -152,9 +152,10 @@ function initial(name: string) {
 }
 
 /**
- * The shape a lone photo or video is framed at: its own, kept between portrait
- * 3:4 and 2:1 so panoramas and tall screenshots stay readable. Cards crop to
- * the frame; the detail sheet letterboxes inside it to show the whole image.
+ * The aspect ratio a lone photo or video is framed at. It is the media's own,
+ * clamped between portrait 3:4 and 2:1 so panoramas and tall screenshots stay
+ * readable. Cards crop to the frame; the detail sheet letterboxes inside it
+ * to show the whole image.
  */
 export function previewRatio(m: Media): number | undefined {
   if (!m.width || !m.height) return undefined;
