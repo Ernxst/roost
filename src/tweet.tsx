@@ -1,4 +1,4 @@
-import type { JSX } from "preact";
+import type { ComponentChildren, JSX } from "preact";
 import { useState } from "preact/hooks";
 import { Library, type Media, type Tweet } from "./mygo";
 
@@ -19,15 +19,18 @@ function Ext({ href, children }: { href: string; children: JSX.Element | string 
   );
 }
 
-/** Post text with t.co links expanded and mentions, hashtags and URLs linked. */
-export function Text({ tweet }: { tweet: Tweet }) {
+/**
+ * Post text with t.co links expanded and mentions, hashtags and URLs linked.
+ * `mark` dresses the plain runs between links, such as to show highlights.
+ */
+export function Text({ tweet, mark = (s) => s }: { tweet: Tweet; mark?: (text: string) => ComponentChildren }) {
   const links = new Map(tweet.links.map((l) => [l.short, l]));
-  const out: (JSX.Element | string)[] = [];
+  const out: ComponentChildren[] = [];
   const pattern = /(https?:\/\/\S+)|(@\w{1,15})|(#[\p{L}\p{N}_]+)/gu;
   const text = decode(tweet.text);
   let last = 0;
   for (const m of text.matchAll(pattern)) {
-    out.push(text.slice(last, m.index));
+    out.push(mark(text.slice(last, m.index)));
     const [token, url, mention, tag] = m;
     if (url) {
       const l = links.get(url);
@@ -39,7 +42,7 @@ export function Text({ tweet }: { tweet: Tweet }) {
     }
     last = (m.index ?? 0) + token.length;
   }
-  out.push(text.slice(last));
+  out.push(mark(text.slice(last)));
   return (
     <p class="text" dir="auto">
       {out}

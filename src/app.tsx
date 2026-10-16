@@ -41,7 +41,7 @@ import { SortMode } from "./sort";
 import { SuggestedChips, useSuggestions } from "./suggest";
 import { Thread } from "./thread";
 import { Links, Reader } from "./links";
-import { HighlightList, Highlighter, HighlightsView, usePostHighlights } from "./highlights";
+import { HighlightList, Highlighter, HighlightsView, marked, usePostHighlights } from "./highlights";
 import { DuplicatesView, WallView } from "./wall";
 import { WhatsNew } from "./changelog";
 import { CollectionEditor } from "./collection";
@@ -627,6 +627,7 @@ function Sheet() {
   const note = useSignal("");
   const reading = useSignal<string | null>(null);
   const hl = usePostHighlights(b);
+  const quotes = hl.list.value.filter((h) => !h.source).map((h) => h.quote);
   const suggested = useSuggestions(b);
 
   useSignalEffect(() => {
@@ -684,7 +685,7 @@ function Sheet() {
       ) : (
         <>
           <Highlighter tweetId={t.id} onAdd={hl.add}>
-            {t.text && <Text tweet={t} />}
+            {t.text && <Text tweet={t} mark={(s) => marked(s, quotes)} />}
             <MediaGrid media={t.media} playable />
             {t.quoted && <Quoted tweet={t.quoted} />}
             <Thread b={b} />
