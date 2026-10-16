@@ -40,8 +40,12 @@ export function SettingsButton() {
   }
 
   async function open() {
-    [settings.value, usage.value] = await Promise.all([Library.settings(), Library.mediaUsage()]);
-    dialog.current?.showModal();
+    try {
+      [settings.value, usage.value] = await Promise.all([Library.settings(), Library.mediaUsage()]);
+      dialog.current?.showModal();
+    } catch (err) {
+      fail(err);
+    }
   }
 
   async function change(patch: Partial<Settings>) {
