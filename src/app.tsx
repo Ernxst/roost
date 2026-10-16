@@ -272,8 +272,8 @@ function Rail() {
       )}
       <div class="rail-foot">
         {!isFixtureMode && <SettingsButton />}
-        {!isFixtureMode && <WhatsNew />}
         <Keys />
+        {!isFixtureMode && <WhatsNew />}
       </div>
     </nav>
   );
