@@ -1,6 +1,7 @@
 import { useComputed, useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { Library, type Bookmark, type Collection } from "./mygo";
+import { fixtureHref, fixtureMode, isFixtureMode, type FixtureMode } from "./fixtures";
 import {
   announce,
   announcement,
@@ -33,6 +34,7 @@ import { RevisitView } from "./revisit";
 import { SettingsButton } from "./settings";
 import { SortMode } from "./sort";
 import { Thread } from "./thread";
+import { Links, Reader } from "./links";
 import { Avatar, MediaGrid, openExternal, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
@@ -53,7 +55,28 @@ export function App() {
       <div class="sr-only" role="status" aria-live="polite">
         {announcement.value}
       </div>
+      {import.meta.env.DEV && <FixtureSwitcher />}
     </div>
+  );
+}
+
+const FIXTURE_MODES: { mode: FixtureMode; label: string }[] = [
+  { mode: "demo", label: "Demo data" },
+  { mode: "worst", label: "Worst case" },
+  { mode: "empty", label: "Empty" },
+  { mode: "one", label: "One" },
+  { mode: "thousand", label: "1,000 rows" },
+];
+
+function FixtureSwitcher() {
+  return (
+    <nav class="fixture-switcher" aria-label="Development data fixtures">
+      {FIXTURE_MODES.map(({ mode, label }) => (
+        <a key={mode} href={fixtureHref(mode)} aria-current={fixtureMode === mode ? "page" : undefined}>
+          {label}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -63,12 +86,14 @@ function RailItem({
   count,
   hue,
   smart,
+  disabled = false,
 }: {
   target: View;
   label: string;
   count?: number;
   hue?: number;
   smart?: string;
+  disabled?: boolean;
 }) {
   const current = same(view.value, target);
   return (
@@ -76,6 +101,7 @@ function RailItem({
       <button
         class="rail-item"
         aria-current={current ? "page" : undefined}
+        disabled={disabled}
         onClick={() => (view.value = target)}
         style={hue === undefined ? undefined : { "--hue": ink(hue) }}
         title={smart ? `Smart collection: ${smart}` : undefined}
@@ -116,14 +142,14 @@ function Rail() {
 
       <ul class="rail-list">
         <RailItem target={{ kind: "all" }} label="Everything" count={s?.total} />
-        <RailItem target={{ kind: "unsorted" }} label="Unsorted" count={s?.unsorted} />
-        {!!s?.removed && <RailItem target={{ kind: "removed" }} label="Gone from X" count={s.removed} />}
+        <RailItem target={{ kind: "unsorted" }} label="Unsorted" count={s?.unsorted} disabled={isFixtureMode} />
+        {!!s?.removed && <RailItem target={{ kind: "removed" }} label="Gone from X" count={s.removed} disabled={isFixtureMode} />}
       </ul>
 
       <h2 class="rail-heading">Rituals</h2>
       <ul class="rail-list">
-        <RailItem target={{ kind: "sort" }} label="Sort the unsorted" count={s?.toSort} />
-        <RailItem target={{ kind: "revisit" }} label="Revisit" />
+        <RailItem target={{ kind: "sort" }} label="Sort the unsorted" count={s?.toSort} disabled={isFixtureMode} />
+        <RailItem target={{ kind: "revisit" }} label="Revisit" disabled={isFixtureMode} />
       </ul>
 
       <h2 class="rail-heading">Collections</h2>
@@ -136,6 +162,7 @@ function Rail() {
             count={c.count}
             hue={c.hue}
             smart={c.query || undefined}
+            disabled={isFixtureMode}
           />
         ))}
       </ul>
@@ -162,7 +189,7 @@ function Rail() {
           )}
         </form>
       ) : (
-        <button class="add" onClick={() => (adding.value = true)}>
+          <button class="add" disabled={isFixtureMode} onClick={() => (adding.value = true)}>
           + New collection
         </button>
       )}
@@ -176,6 +203,7 @@ function Rail() {
                 <button
                   class="rail-item"
                   aria-current={same(view.value, { kind: "author", handle: a.handle }) ? "page" : undefined}
+                  disabled={isFixtureMode}
                   onClick={() => (view.value = { kind: "author", handle: a.handle })}
                 >
                   <Avatar src={a.avatar} size={18} />
@@ -188,7 +216,7 @@ function Rail() {
         </>
       )}
       <div class="rail-foot">
-        <SettingsButton />
+        {!isFixtureMode && <SettingsButton />}
       </div>
     </nav>
   );
@@ -253,19 +281,19 @@ function Toolbar() {
         <kbd aria-hidden="true">/</kbd>
         <SearchHints open={focused.value && !search.value} input={input} />
       </div>
-      {search.value.trim() && <SaveSearch />}
-      <button class="chip" aria-pressed={mediaOnly.value} onClick={() => (mediaOnly.value = !mediaOnly.value)}>
+      {search.value.trim() && !isFixtureMode && <SaveSearch />}
+      <button class="chip" disabled={isFixtureMode} aria-pressed={mediaOnly.value} onClick={() => (mediaOnly.value = !mediaOnly.value)}>
         With media
       </button>
       <div class="sync">
         <SyncStatus />
         <div class="sync-buttons">
-          <button class="press" disabled={busy.value} onClick={() => startSync(false)}>
+          <button class="press" disabled={busy.value || isFixtureMode} onClick={() => startSync(false)}>
             Sync
           </button>
           <button
             class="press quiet"
-            disabled={busy.value}
+            disabled={busy.value || isFixtureMode}
             onClick={() => startSync(true)}
             title="Read every bookmark and mark the ones gone from X"
           >
@@ -462,10 +490,10 @@ function Empty() {
       <p class="lede">The journal is empty.</p>
       <p>Sync to read your bookmarks from X. A window opens if X asks you to sign in.</p>
       <div class="row">
-        <button class="press" onClick={() => startSync(true)}>
+        <button class="press" disabled={isFixtureMode} onClick={() => startSync(true)}>
           Sync from X
         </button>
-        <button class="press quiet" onClick={importFile}>
+        <button class="press quiet" disabled={isFixtureMode} onClick={importFile}>
           Import an export…
         </button>
       </div>
@@ -479,6 +507,7 @@ function Sheet() {
   const panel = useRef<HTMLElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
   const note = useSignal("");
+  const reading = useSignal<string | null>(null);
 
   useSignalEffect(() => {
     const o = opened.value;
@@ -491,11 +520,19 @@ function Sheet() {
   });
   useEffect(() => {
     note.value = b?.note ?? "";
+    reading.value = null;
     if (b) markOpened(b);
   }, [b?.tweet.id]);
 
   if (!b) return null;
   const t = b.tweet;
+  if (reading.value) {
+    return (
+      <aside class="sheet wide" ref={panel} tabIndex={-1} aria-label="Saved page">
+        <Reader url={reading.value} onClose={() => (reading.value = null)} />
+      </aside>
+    );
+  }
   return (
     <aside class="sheet" ref={panel} tabIndex={-1} aria-label={`Post by ${t.authorName}`}>
       <div class="sheet-head">
@@ -515,6 +552,7 @@ function Sheet() {
       <MediaGrid media={t.media} playable />
       {t.quoted && <Quoted tweet={t.quoted} />}
       <Thread b={b} />
+      <Links b={b} onRead={(url) => (reading.value = url)} />
       <p class="meta">
         Posted <time dateTime={t.createdAt}>{new Date(t.createdAt).toLocaleString()}</time>
         <br />
@@ -535,7 +573,7 @@ function Sheet() {
         {manual().length === 0 && <p class="hint">Make a collection in the sidebar to file posts.</p>}
         {manual().map((c, i) => (
           <label key={c.id} class="check" style={{ "--hue": ink(c.hue) }}>
-            <input type="checkbox" checked={b.collections.includes(c.id)} onChange={() => toggleCollection(b, c.id)} />
+            <input type="checkbox" disabled={isFixtureMode} checked={b.collections.includes(c.id)} onChange={() => toggleCollection(b, c.id)} />
             <span>{c.name}</span>
             {i < 9 && <kbd aria-hidden="true">{i + 1}</kbd>}
           </label>
@@ -548,6 +586,7 @@ function Sheet() {
           id="note"
           rows={4}
           value={note.value}
+          disabled={isFixtureMode}
           onInput={(e) => {
             note.value = e.currentTarget.value;
             clearTimeout(noteTimer);

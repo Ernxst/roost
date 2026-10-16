@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"roost/internal/links"
 	"roost/internal/xparse"
 )
 
@@ -298,5 +299,38 @@ func TestThreads(t *testing.T) {
 	}
 	if got, _ := s.Thread("1"); len(got) != 2 {
 		t.Errorf("thread = %+v", got)
+	}
+}
+
+func TestLinks(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	e := entry("1", 10, "worth reading", false)
+	e.Tweet.Links = []xparse.Link{{Short: "https://t.co/a", Expanded: "https://blog.example.com/shaders"}, {Short: "https://t.co/b", Expanded: "https://x.com/a/status/2"}}
+	s.Ingest([]xparse.Entry{e, entry("2", 20, "no links", false)}, now)
+
+	cands, err := s.LinkCandidates(10)
+	if err != nil || len(cands) != 1 || cands[0] != "https://blog.example.com/shaders" {
+		t.Fatalf("candidates = %v, %v", cands, err)
+	}
+	if err := s.SaveLink(links.Page{URL: cands[0], Title: "How shaders work", Text: "the rasteriser fills triangles"}, now); err != nil {
+		t.Fatal(err)
+	}
+	if cands, _ := s.LinkCandidates(10); len(cands) != 0 {
+		t.Errorf("saved link still a candidate: %v", cands)
+	}
+	if got := ids(t, s, Query{Search: "triangles"}); !equal(got, []string{"1"}) {
+		t.Errorf("search in linked page = %v", got)
+	}
+	if got := ids(t, s, Query{Search: "has:article"}); !equal(got, []string{"1"}) {
+		t.Errorf("has:article = %v", got)
+	}
+	ls, err := s.Links("1")
+	if err != nil || len(ls) != 2 || !ls[0].HasText || ls[0].Page.Title != "How shaders work" || ls[0].Page.Text != "" || ls[1].Page != nil {
+		t.Errorf("links = %+v, %v", ls, err)
 	}
 }

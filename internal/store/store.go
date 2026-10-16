@@ -84,6 +84,13 @@ CREATE TABLE threads (
 	posts TEXT NOT NULL DEFAULT '[]'
 );
 CREATE VIRTUAL TABLE threads_fts USING fts5(text, tokenize = 'unicode61 remove_diacritics 2');
+`, `
+CREATE TABLE links (
+	url TEXT PRIMARY KEY,
+	fetched_at INTEGER NOT NULL,
+	page TEXT NOT NULL
+);
+CREATE VIRTUAL TABLE links_fts USING fts5(title, text, tokenize = 'unicode61 remove_diacritics 2');
 `}
 
 // Open opens the library at path, creating and migrating it as needed.
@@ -240,16 +247,19 @@ func (s *Store) List(q Query) (ListResult, error) {
 	} else {
 		where = append(where, "b.removed_at IS NULL")
 	}
-	// Words match the post itself or, failing that, the rest of its thread.
+	// Words match the post, the rest of its thread or a page it links to.
 	const matches = `(t.rowid IN (SELECT rowid FROM tweets_fts WHERE tweets_fts MATCH ?)
-		OR t.rowid IN (SELECT rowid FROM threads_fts WHERE threads_fts MATCH ?))`
+		OR t.rowid IN (SELECT rowid FROM threads_fts WHERE threads_fts MATCH ?)
+		OR EXISTS (SELECT 1 FROM json_each(t.data, '$.links') je JOIN links l ON l.url = json_extract(je.value, '$.expanded')
+			WHERE l.rowid IN (SELECT rowid FROM links_fts WHERE links_fts MATCH ?)))`
 	if m := ftsTerms(srch.words); m != "" {
 		where = append(where, matches)
-		args = append(args, m, m)
+		args = append(args, m, m, m)
 	}
 	for _, w := range srch.notWords {
+		m := ftsTerms([]string{w})
 		where = append(where, "NOT "+matches)
-		args = append(args, ftsTerms([]string{w}), ftsTerms([]string{w}))
+		args = append(args, m, m, m)
 	}
 	where = append(where, srch.clauses...)
 	args = append(args, srch.args...)

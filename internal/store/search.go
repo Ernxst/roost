@@ -11,7 +11,7 @@ import (
 // quoted post, mixed with operators:
 //
 //	from:handle            posts by that author
-//	has:media|photo|video|gif|link|quote|note|thread
+//	has:media|photo|video|gif|link|article|quote|note|thread
 //	in:name, -in:name      in, or not in, a collection; in:none for none
 //	is:gone|opened|unopened|aside   removed on X, opened in roost or not,
 //	                       set aside while sorting
@@ -115,13 +115,15 @@ func mediaKind(kind string) string {
 }
 
 var hasClauses = map[string]string{
-	"media":  "t.has_media",
-	"photo":  mediaKind("photo"),
-	"video":  mediaKind("video"),
-	"gif":    mediaKind("animated_gif"),
-	"link":   "json_array_length(t.data, '$.links') > 0",
-	"quote":  "json_extract(t.data, '$.quoted') IS NOT NULL",
-	"note":   "b.note != ''",
+	"media": "t.has_media",
+	"photo": mediaKind("photo"),
+	"video": mediaKind("video"),
+	"gif":   mediaKind("animated_gif"),
+	"link":  "json_array_length(t.data, '$.links') > 0",
+	"quote": "json_extract(t.data, '$.quoted') IS NOT NULL",
+	"note":  "b.note != ''",
+	"article": `EXISTS (SELECT 1 FROM json_each(t.data, '$.links') je JOIN links l ON l.url = json_extract(je.value, '$.expanded')
+		WHERE json_extract(l.page, '$.text') IS NOT NULL)`,
 	"thread": "EXISTS (SELECT 1 FROM threads th WHERE th.tweet_id = b.tweet_id AND th.length > 1)",
 }
 

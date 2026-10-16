@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"roost/internal/links"
 	"roost/internal/media"
 	"roost/internal/store"
 	"roost/internal/xparse"
@@ -36,6 +37,7 @@ type Library struct {
 	caching sync.Mutex
 	// threading serialises thread capture, which shares one hidden page.
 	threading sync.Mutex
+	linking   sync.Mutex
 }
 
 func (l *Library) store() (*store.Store, error) {
@@ -288,6 +290,61 @@ func (l *Library) captureThreads() {
 	}
 }
 
+// Links returns the links in a post and what roost saved of each page.
+func (l *Library) Links(tweetID string) ([]store.SavedLink, error) {
+	s, err := l.store()
+	if err != nil {
+		return nil, err
+	}
+	return s.Links(tweetID)
+}
+
+// Page returns the saved copy of a linked page, text included.
+func (l *Library) Page(url string) (*links.Page, error) {
+	s, err := l.store()
+	if err != nil {
+		return nil, err
+	}
+	return s.Page(url)
+}
+
+// saveLinks fetches the pages bookmarks link to and keeps their text. One
+// run happens at a time.
+func (l *Library) saveLinks() {
+	s, err := l.store()
+	if err != nil {
+		return
+	}
+	l.linking.Lock()
+	defer l.linking.Unlock()
+	urls, err := s.LinkCandidates(500)
+	if err != nil || len(urls) == 0 {
+		return
+	}
+	jobs := make(chan string)
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for u := range jobs {
+				ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+				page := links.Fetch(ctx, u)
+				cancel()
+				if err := s.SaveLink(page, time.Now()); err != nil {
+					log.Printf("links: %v", err)
+				}
+			}
+		}()
+	}
+	for _, u := range urls {
+		jobs <- u
+	}
+	close(jobs)
+	wg.Wait()
+	log.Printf("links: saved %d pages", len(urls))
+}
+
 // Sync starts bringing the library up to date with X and returns at once;
 // SyncProgress reports how it goes. A full sync reads every bookmark and
 // marks the ones gone from X as removed.
@@ -323,6 +380,7 @@ func (l *Library) Sync(full bool) error {
 			log.Printf("sync: %v", err)
 		}
 		go l.captureThreads()
+		go l.saveLinks()
 		l.cacheMedia()
 	}()
 	return nil
@@ -396,6 +454,7 @@ func main() {
 		}
 		go library.cacheMedia()
 		go library.captureThreads()
+		go library.saveLinks()
 		library.main = mygo.NewWindow(mygo.WindowOptions{
 			Title:           "roost",
 			Width:           1240,

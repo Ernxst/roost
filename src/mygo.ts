@@ -55,6 +55,17 @@ export interface MediaUsage {
   bytes: number;
 }
 
+export interface Page {
+  url: string;
+  finalUrl: string;
+  title: string;
+  site: string;
+  byline: string;
+  excerpt: string;
+  text?: string;
+  error?: string;
+}
+
 export type Phase = string;
 
 export interface Progress {
@@ -80,6 +91,14 @@ export interface Revisit {
   onThisDay: Bookmark[];
   unopened: Bookmark[];
   random: Bookmark[];
+}
+
+export interface SavedLink {
+  short: string;
+  expanded: string;
+  display: string;
+  page: Page | null;
+  hasText: boolean;
 }
 
 export interface Settings {
@@ -151,6 +170,10 @@ export const Library = {
   import(): Promise<number> {
     return call("Library.Import");
   },
+  /** Links returns the links in a post and what roost saved of each page. */
+  links(tweetID: string): Promise<SavedLink[]> {
+    return call("Library.Links", tweetID);
+  },
   /** List returns the bookmarks matching the query, newest bookmark first. */
   list(q: Query): Promise<ListResult> {
     return call("Library.List", q);
@@ -169,6 +192,10 @@ export const Library = {
   /** Open opens a URL in the default browser. */
   open(url: string): Promise<void> {
     return call("Library.Open", url);
+  },
+  /** Page returns the saved copy of a linked page, text included. */
+  page(url: string): Promise<Page | null> {
+    return call("Library.Page", url);
   },
   /**
    * Revisit picks bookmarks worth seeing again: posts from this day in
