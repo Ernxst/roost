@@ -482,10 +482,11 @@ kbd {
   opacity: 0.92;
 }
 
+/* Pressed over the card's top edge, clear of the date. */
 .gone-stamp {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: -10px;
+  right: 14px;
   z-index: 2;
   padding: 3px 7px 2px;
   border: 3px double var(--accent);
