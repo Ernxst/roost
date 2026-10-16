@@ -335,8 +335,9 @@ export const Library = {
     return call("Library.Settings");
   },
   /**
-   * ShareCollection saves one collection as a Markdown file, optionally
-   * including private notes. It returns the file's path, or "" when cancelled.
+   * ShareCollection asks where to save one collection as a Markdown file and
+   * optionally includes its private notes. It returns the file's path, or "" when
+   * cancelled.
    */
   shareCollection(id: number, includeNotes: boolean): Promise<string> {
     return call("Library.ShareCollection", id, includeNotes);
