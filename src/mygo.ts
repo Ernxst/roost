@@ -4,6 +4,13 @@ import { call, event } from "mygo-runtime";
 
 // ---- Types ----
 
+/** About is roost's version and the changelog of every version so far. */
+export interface About {
+  version: string;
+  /** Changelog is CHANGELOG.md, in Markdown. */
+  changelog: string;
+}
+
 export interface Author {
   handle: string;
   name: string;
@@ -171,6 +178,9 @@ export interface Tweet {
 
 /** Library is the bookmark library as the frontend sees it. */
 export const Library = {
+  about(): Promise<About> {
+    return call("Library.About");
+  },
   /**
    * AddHighlight keeps a passage from a post, or from a page it links to when
    * source is that page's URL.

@@ -38,6 +38,7 @@ import { Thread } from "./thread";
 import { Links, Reader } from "./links";
 import { HighlightList, Highlighter, HighlightsView, usePostHighlights } from "./highlights";
 import { DuplicatesView, WallView } from "./wall";
+import { WhatsNew } from "./changelog";
 import { Avatar, MediaGrid, openExternal, previewRatio, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
@@ -236,6 +237,7 @@ function Rail() {
       )}
       <div class="rail-foot">
         {!isFixtureMode && <SettingsButton />}
+        {!isFixtureMode && <WhatsNew />}
       </div>
     </nav>
   );

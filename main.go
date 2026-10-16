@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -438,6 +439,20 @@ func (l *Library) AllHighlights() ([]store.Highlight, error) {
 		return nil, err
 	}
 	return s.AllHighlights()
+}
+
+//go:embed CHANGELOG.md
+var changelog string
+
+// About is roost's version and the changelog of every version so far.
+type About struct {
+	Version string `json:"version"`
+	// Changelog is CHANGELOG.md, in Markdown.
+	Changelog string `json:"changelog"`
+}
+
+func (l *Library) About() About {
+	return About{Version: mygo.App.Version(), Changelog: changelog}
 }
 
 // Wall returns every bookmark with photos, videos or GIFs.
