@@ -52,7 +52,7 @@ function CardBody({ b }: { b: Bookmark }) {
       aria-labelledby={`by-${t.id}`}
     >
       <header class="byline">
-        <Avatar src={t.authorAvatar} />
+        <Avatar src={t.authorAvatar} name={t.authorName} />
         <span class="who" id={`by-${t.id}`}>
           <span class="name" dir="auto">{t.authorName}</span>
           <span class="handle">@{t.authorHandle}</span>

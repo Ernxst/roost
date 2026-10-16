@@ -83,10 +83,16 @@ export function relative(iso: string) {
 /** Loads X media through roost's on-disk copy, fetching it the first time. */
 export const cached = (url: string) => `roost-media://localhost/?u=${encodeURIComponent(url)}`;
 
-export function Avatar({ src, size = 28 }: { src: string; size?: number }) {
+export function Avatar({ src, name = "", size = 28 }: { src: string; name?: string; size?: number }) {
   // Remembers which address failed, so a new author's avatar gets its own try.
   const [failed, setFailed] = useState("");
-  if (!src || failed === src) return <span class="avatar blank" style={{ width: size, height: size }} aria-hidden="true" />;
+  if (!src || failed === src) {
+    return (
+      <span class="avatar blank" style={{ width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.46)}px` }} aria-hidden="true">
+        {[...name.trim()][0]?.toLocaleUpperCase()}
+      </span>
+    );
+  }
   return <img class="avatar" src={cached(src)} width={size} height={size} alt="" loading="lazy" onError={() => setFailed(src)} />;
 }
 
@@ -148,7 +154,7 @@ export function Quoted({ tweet }: { tweet: Tweet }) {
   return (
     <blockquote class="quoted">
       <div class="byline">
-        <Avatar src={tweet.authorAvatar} size={18} />
+        <Avatar src={tweet.authorAvatar} name={tweet.authorName} size={18} />
         <span class="name" dir="auto">{tweet.authorName}</span>
         <span class="handle">@{tweet.authorHandle}</span>
       </div>

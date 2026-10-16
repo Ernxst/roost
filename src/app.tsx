@@ -247,7 +247,7 @@ function Rail() {
                   onClick={() => (view.value = { kind: "author", handle: a.handle })}
                   title={a.name || a.handle}
                 >
-                  <Avatar src={a.avatar} size={18} />
+                  <Avatar src={a.avatar} name={a.name || a.handle} size={18} />
                   <span class="label">{a.name || a.handle}</span>
                   <span class="count">{a.count.toLocaleString()}</span>
                 </button>
@@ -644,7 +644,7 @@ function Sheet() {
         </button>
       </div>
       <div class="byline big">
-        <Avatar src={t.authorAvatar} size={40} />
+        <Avatar src={t.authorAvatar} name={t.authorName} size={40} />
         <h2 class="who">
           <span class="name" dir="auto">{t.authorName}</span>
           <span class="handle">@{t.authorHandle}</span>

@@ -146,7 +146,7 @@ export function HighlightsView() {
             <li key={h.id} class="clipping">
               <blockquote dir="auto">{h.quote}</blockquote>
               <button class="clip-source" onClick={() => openPost(h.tweetId)}>
-                {h.tweet && <Avatar src={h.tweet.authorAvatar} size={18} />}
+                {h.tweet && <Avatar src={h.tweet.authorAvatar} name={h.tweet.authorName} size={18} />}
                 <span>
                   {h.tweet?.authorName}
                   {h.source && ` · ${new URL(h.source).hostname.replace(/^www\./, "")}`}

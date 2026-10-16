@@ -204,7 +204,7 @@ function SortCard({ b }: { b: Bookmark }) {
   return (
     <article class="card big" aria-labelledby={`sort-${t.id}`} aria-live="polite">
       <header class="byline">
-        <Avatar src={t.authorAvatar} size={36} />
+        <Avatar src={t.authorAvatar} name={t.authorName} size={36} />
         <span class="who" id={`sort-${t.id}`}>
           <span class="name" dir="auto">{t.authorName}</span>
           <span class="handle">@{t.authorHandle}</span>

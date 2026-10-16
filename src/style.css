@@ -389,6 +389,16 @@ div.empty p { margin: 0 0 14px; }
   outline-offset: -1px;
   background: var(--rule);
 }
+/* An author with no picture gets the first letter of their name. */
+.avatar.blank {
+  display: inline-grid;
+  place-items: center;
+  background: var(--paper-deep);
+  color: var(--ink-2);
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1;
+}
 
 .text {
   margin: 10px 0 0;

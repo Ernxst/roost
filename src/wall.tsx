@@ -113,7 +113,7 @@ export function DuplicatesView() {
                 {g.bookmarks.map((b) => (
                   <li key={b.tweet.id}>
                     <button class="dupe-row" onClick={() => openPost(b.tweet.id)}>
-                      <Avatar src={b.tweet.authorAvatar} size={22} />
+                      <Avatar src={b.tweet.authorAvatar} name={b.tweet.authorName} size={22} />
                       <span class="dupe-text">
                         <span class="name" dir="auto">{b.tweet.authorName}</span> {b.tweet.text.replace(/https?:\/\/\S+/g, "").trim() || "(no text)"}
                       </span>
