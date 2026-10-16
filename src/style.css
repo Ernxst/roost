@@ -69,7 +69,7 @@ button { cursor: pointer; }
 .skip:focus { left: 90px; }
 
 kbd {
-  font: 10.5px var(--mono);
+  font: 11px var(--mono);
   text-transform: none;
   color: var(--ink-3);
   border: 1px solid var(--rule);
