@@ -352,8 +352,8 @@ function SyncNotice() {
 }
 
 function syncFailure(message: string) {
-  if (/tls|certificate|handshake/i.test(message)) return "Sync failed because X’s secure connection could not be verified.";
   if (/timeout|deadline/i.test(message)) return "Sync failed because X took too long to respond.";
+  if (/tls|certificate|handshake/i.test(message)) return "Sync failed because X’s secure connection could not be verified.";
   if (/lookup|dial tcp|connection refused|network/i.test(message)) return "Sync failed because roost could not reach X.";
   if (/sign.?in|login|unauthori[sz]ed|forbidden|cookie/i.test(message)) return "Sync failed because X needs you to sign in again.";
   return "Sync failed. Try again or check your connection and sign-in.";

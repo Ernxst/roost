@@ -46,8 +46,8 @@ export function Links({ b, onRead }: { b: Bookmark; onRead: (url: string) => voi
 
 function linkError(error: string) {
   if (!error) return "Not saved: page text could not be read.";
-  if (/tls|certificate|handshake/i.test(error)) return "Not saved: the site’s secure connection failed.";
   if (/timeout|deadline/i.test(error)) return "Not saved: the site took too long to respond.";
+  if (/tls|certificate|handshake/i.test(error)) return "Not saved: the site’s secure connection failed.";
   if (/lookup|dial tcp|connection refused|network/i.test(error)) return "Not saved: the site could not be reached.";
   if (/sign.?in|login|unauthori[sz]ed|forbidden/i.test(error)) return "Not saved: the page may require signing in.";
   return "Not saved: the page could not be read.";
