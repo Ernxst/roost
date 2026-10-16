@@ -114,13 +114,16 @@ export function SortMode() {
   });
 
   const left = stats.value?.toSort ?? 0;
+  // Unsorted posts set aside wait outside the queue.
+  const asideCount = (stats.value?.unsorted ?? 0) - left;
   const filed = history.value.filter((a) => a.kind === "file").length;
   return (
     <section class="sorter" aria-labelledby="feed-title">
       <div class="feed-head">
         <h1 id="feed-title">Sorting</h1>
         <span class="feed-count">
-          {left.toLocaleString()} left to sort{filed ? ` · ${filed.toLocaleString()} filed this sitting` : ""}
+          {left.toLocaleString()} left to sort{asideCount > 0 ? ` · ${asideCount.toLocaleString()} set aside` : ""}
+          {filed ? ` · ${filed.toLocaleString()} filed this sitting` : ""}
         </span>
       </div>
       {!current ? (
