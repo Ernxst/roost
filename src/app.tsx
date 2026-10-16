@@ -172,6 +172,11 @@ function Rail() {
   const adding = useSignal(false);
   const name = useSignal("");
   const error = useSignal("");
+  const nameField = useRef<HTMLInputElement>(null);
+  // Focus moves only when the field opens, never on a re-render such as a navigation.
+  useEffect(() => {
+    if (adding.value) nameField.current?.focus();
+  }, [adding.value]);
 
   async function submit(e: Event) {
     e.preventDefault();
@@ -232,11 +237,12 @@ function Rail() {
             value={name.value}
             onInput={(e) => (name.value = e.currentTarget.value)}
             onKeyDown={(e) => e.key === "Escape" && (adding.value = false)}
+            onBlur={() => !name.value.trim() && (adding.value = false)}
             placeholder="Name it…"
             autoComplete="off"
             aria-invalid={error.value ? "true" : undefined}
             aria-describedby={error.value ? "new-collection-error" : undefined}
-            ref={(el) => el?.focus()}
+            ref={nameField}
           />
           {error.value && (
             <p id="new-collection-error" class="field-error">
@@ -347,6 +353,11 @@ function SaveSearch() {
   const naming = useSignal(false);
   const name = useSignal("");
   const error = useSignal("");
+  const nameField = useRef<HTMLInputElement>(null);
+  // Focus moves only when the field opens, never on a re-render such as a navigation.
+  useEffect(() => {
+    if (naming.value) nameField.current?.focus();
+  }, [naming.value]);
   async function save(e: Event) {
     e.preventDefault();
     try {
@@ -377,11 +388,12 @@ function SaveSearch() {
         value={name.value}
         onInput={(e) => ((name.value = e.currentTarget.value), (error.value = ""))}
         onKeyDown={(e) => e.key === "Escape" && (naming.value = false)}
+        onBlur={() => !name.value.trim() && (naming.value = false)}
         placeholder="Name this search…"
         autoComplete="off"
         aria-invalid={error.value ? "true" : undefined}
         aria-describedby={error.value ? "save-search-error" : undefined}
-        ref={(el) => el?.focus()}
+        ref={nameField}
       />
       {error.value && (
         <p id="save-search-error" class="field-error">

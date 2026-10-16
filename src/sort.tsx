@@ -1,5 +1,5 @@
 import { useComputed, useSignal } from "@preact/signals";
-import { useEffect } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { ink, Stamps } from "./card";
 import { inDialog } from "./keys";
 import { Library, type Bookmark } from "./mygo";
@@ -19,9 +19,15 @@ export function SortMode() {
   const history = useSignal<Action[]>([]);
   const naming = useSignal(false);
   const name = useSignal("");
+  const nameField = useRef<HTMLInputElement>(null);
   const queue = useComputed(() => items.value.filter((b) => !done.value.has(b.tweet.id)));
   const current = queue.value[0];
   const suggested = useSuggestions(current);
+
+  // Focus moves only when the field opens, never on a re-render such as dealing the next post.
+  useEffect(() => {
+    if (naming.value) nameField.current?.focus();
+  }, [naming.value]);
 
   // Filed posts leave the unsorted list, so a fresh first page is the next batch.
   useEffect(() => {
@@ -174,9 +180,10 @@ export function SortMode() {
                   value={name.value}
                   onInput={(e) => (name.value = e.currentTarget.value)}
                   onKeyDown={(e) => e.key === "Escape" && (naming.value = false)}
+                  onBlur={() => !name.value.trim() && (naming.value = false)}
                   placeholder="New collection…"
                   autoComplete="off"
-                  ref={(el) => el?.focus()}
+                  ref={nameField}
                 />
               </form>
             ) : (
