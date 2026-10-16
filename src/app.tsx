@@ -545,11 +545,16 @@ function emptyText(v: View): string {
 /** Saves the collection as one Markdown file to send to someone. */
 function ShareCollection({ id }: { id: number }) {
   const saving = useSignal(false);
+  const sharing = useSignal(false);
+  const includeNotes = useSignal(false);
   async function share() {
     saving.value = true;
     try {
-      const path = await Library.shareCollection(id);
-      if (path) announce(`Saved ${path.split("/").pop()}`);
+      const path = await Library.shareCollection(id, includeNotes.value);
+      if (path) {
+        announce(`Saved ${path.split("/").pop()}`);
+        sharing.value = false;
+      }
     } catch (err) {
       fail(err);
     } finally {
@@ -557,9 +562,50 @@ function ShareCollection({ id }: { id: number }) {
     }
   }
   return (
-    <button class="chip share" disabled={saving.value} onClick={share}>
-      Share as Markdown…
-    </button>
+    <div class="share">
+      <button
+        class="chip"
+        type="button"
+        aria-expanded={sharing.value}
+        aria-controls="share-options"
+        onClick={() => {
+          includeNotes.value = false;
+          sharing.value = !sharing.value;
+        }}
+      >
+        Share as Markdown…
+      </button>
+      {sharing.value && (
+        <form
+          id="share-options"
+          class="share-options"
+          aria-label="Share options"
+          onSubmit={(e) => {
+            e.preventDefault();
+            share();
+          }}
+          onKeyDown={(e) => e.key === "Escape" && (sharing.value = false)}
+        >
+          <label for="include-private-notes">
+            <input
+              id="include-private-notes"
+              type="checkbox"
+              checked={includeNotes.value}
+              onChange={(e) => (includeNotes.value = e.currentTarget.checked)}
+            />
+            Include private notes and highlight notes
+          </label>
+          <div class="share-actions">
+            <button class="press quiet" type="button" disabled={saving.value} onClick={() => (sharing.value = false)}>
+              Cancel
+            </button>
+            <button class="press" type="submit" disabled={saving.value}>
+              {saving.value ? "Saving…" : "Save Markdown"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 

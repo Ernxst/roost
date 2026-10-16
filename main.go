@@ -494,8 +494,9 @@ func (l *Library) Export(choose bool) (export.Result, error) {
 }
 
 // ShareCollection asks where to save one collection as a Markdown file and
-// writes it there. It returns the file's path, or "" when cancelled.
-func (l *Library) ShareCollection(id int64) (string, error) {
+// optionally includes its private notes. It returns the file's path, or "" when
+// cancelled.
+func (l *Library) ShareCollection(id int64, includeNotes bool) (string, error) {
 	s, err := l.store()
 	if err != nil {
 		return "", err
@@ -527,7 +528,7 @@ func (l *Library) ShareCollection(id int64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := export.Collection(f, c, res.Items, s.Highlights); err != nil {
+	if err := export.Collection(f, c, res.Items, s.Highlights, includeNotes); err != nil {
 		f.Close()
 		return "", err
 	}

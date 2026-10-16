@@ -74,12 +74,27 @@ func TestCollection(t *testing.T) {
 
 	res, _ := s.List(store.Query{Collection: c.ID})
 	var md strings.Builder
-	if err := Collection(&md, c, res.Items, s.Highlights); err != nil {
+	if err := Collection(&md, c, res.Items, s.Highlights, false); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"# Reading\n\n1 post from X, kept in roost.", "**Ada** ([@ada](https://x.com/ada))", "Engines & looms", "![](https://pbs.twimg.com/a.jpg?name=small)", "*Note:* for the essay", "> Engines\n\nthe hook", "[View on X](https://x.com/ada/status/1)"} {
+	for _, want := range []string{"# Reading\n\n1 post from X, kept in roost.", "**Ada** ([@ada](https://x.com/ada))", "Engines & looms", "![](https://pbs.twimg.com/a.jpg?name=small)", "> Engines\n", "[View on X](https://x.com/ada/status/1)"} {
 		if !strings.Contains(md.String(), want) {
 			t.Errorf("collection lacks %q:\n%s", want, md.String())
+		}
+	}
+	for _, private := range []string{"for the essay", "the hook"} {
+		if strings.Contains(md.String(), private) {
+			t.Errorf("default collection share includes private text %q:\n%s", private, md.String())
+		}
+	}
+
+	md.Reset()
+	if err := Collection(&md, c, res.Items, s.Highlights, true); err != nil {
+		t.Fatal(err)
+	}
+	for _, private := range []string{"*Note:* for the essay", "> Engines\n\nthe hook"} {
+		if !strings.Contains(md.String(), private) {
+			t.Errorf("opt-in collection share lacks %q:\n%s", private, md.String())
 		}
 	}
 }

@@ -11,7 +11,7 @@ import (
 // Collection writes one collection as a single Markdown file to share. It
 // links to X and to remote images, so it reads anywhere without roost's
 // attachments.
-func Collection(w io.Writer, c store.Collection, bookmarks []store.Bookmark, highlights func(tweetID string) ([]store.Highlight, error)) error {
+func Collection(w io.Writer, c store.Collection, bookmarks []store.Bookmark, highlights func(tweetID string) ([]store.Highlight, error), includeNotes bool) error {
 	var md strings.Builder
 	md.WriteString("# " + c.Name + "\n\n")
 	posts := "posts"
@@ -38,13 +38,13 @@ func Collection(w io.Writer, c store.Collection, bookmarks []store.Bookmark, hig
 				md.WriteString("> " + line + "\n")
 			}
 		}
-		if b.Note != "" {
+		if includeNotes && b.Note != "" {
 			md.WriteString("\n*Note:* " + b.Note + "\n")
 		}
 		if hs, err := highlights(t.ID); err == nil {
 			for _, h := range hs {
 				md.WriteString("\n> " + strings.ReplaceAll(h.Quote, "\n", "\n> ") + "\n")
-				if h.Note != "" {
+				if includeNotes && h.Note != "" {
 					md.WriteString("\n" + h.Note + "\n")
 				}
 			}
