@@ -39,6 +39,7 @@ type Library struct {
 	// threading serialises thread capture, which shares one hidden page.
 	threading sync.Mutex
 	linking   sync.Mutex
+	tray      *menuBar
 }
 
 func (l *Library) store() (*store.Store, error) {
@@ -441,7 +442,11 @@ func (l *Library) AllHighlights() ([]store.Highlight, error) {
 // Sync starts bringing the library up to date with X and returns at once;
 // SyncProgress reports how it goes. A full sync reads every bookmark and
 // marks the ones gone from X as removed.
-func (l *Library) Sync(full bool) error {
+func (l *Library) Sync(full bool) error { return l.startSync(full, false) }
+
+// startSync reads X's bookmarks in the background. A background sync tells
+// the user about new bookmarks with a notification.
+func (l *Library) startSync(full, background bool) error {
 	s, err := l.store()
 	if err != nil {
 		return err
@@ -453,17 +458,27 @@ func (l *Library) Sync(full bool) error {
 	}
 	l.syncing = true
 	l.mu.Unlock()
+	l.trayChanged()
 
 	go func() {
 		defer func() {
 			l.mu.Lock()
 			l.syncing = false
 			l.mu.Unlock()
+			l.trayChanged()
 		}()
 		page := openSyncPage(l.main, xsync.BookmarksURL)
 		defer page.Close()
-		_, err := xsync.Run(context.Background(), page, s, xsync.Options{
-			Full: full,
+		var p xsync.Page = page
+		var loginTimeout time.Duration
+		if background {
+			// Nobody asked for this sync, so it gives up rather than show
+			// X's sign-in page.
+			p, loginTimeout = quietPage{page}, time.Nanosecond
+		}
+		rec, err := xsync.Run(context.Background(), p, s, xsync.Options{
+			Full:         full,
+			LoginTimeout: loginTimeout,
 			Progress: func(p xsync.Progress) {
 				log.Printf("sync: %s, %d seen, %d new, %d removed %s", p.Phase, p.Seen, p.Added, p.Removed, p.Message)
 				SyncProgress.Broadcast(p)
@@ -471,6 +486,8 @@ func (l *Library) Sync(full bool) error {
 		})
 		if err != nil {
 			log.Printf("sync: %v", err)
+		} else if background {
+			l.notifyAdded(s, rec)
 		}
 		go l.captureThreads()
 		go l.saveLinks()
@@ -548,6 +565,7 @@ func main() {
 		go library.cacheMedia()
 		go library.captureThreads()
 		go library.saveLinks()
+		go library.schedule()
 		library.main = mygo.NewWindow(mygo.WindowOptions{
 			Title:           "roost",
 			Width:           1240,
@@ -559,6 +577,7 @@ func main() {
 			StateKey:        "main",
 			URL:             "/",
 		})
+		library.stayInMenuBar()
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)

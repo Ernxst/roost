@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"roost/internal/xparse"
 )
@@ -88,6 +89,27 @@ func (s *Store) MediaURLs(videos bool) ([]string, error) {
 			return nil, err
 		}
 		walk(&t)
+	}
+	return out, rows.Err()
+}
+
+// NewAuthors returns the handles of the authors of bookmarks first seen at
+// or after since, most frequent first.
+func (s *Store) NewAuthors(since time.Time) ([]string, error) {
+	rows, err := s.db.Query(`SELECT t.author_handle FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id
+		WHERE b.first_seen_at >= ? GROUP BY t.author_handle COLLATE NOCASE
+		ORDER BY count(*) DESC, max(b.sort_index) DESC`, since.UnixMilli())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var h string
+		if err := rows.Scan(&h); err != nil {
+			return nil, err
+		}
+		out = append(out, h)
 	}
 	return out, rows.Err()
 }

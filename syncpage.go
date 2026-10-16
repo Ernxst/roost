@@ -71,3 +71,8 @@ func (p *syncPage) Scroll() error {
 func (p *syncPage) ShowLogin() { p.win.Show(); p.win.Focus() }
 func (p *syncPage) HideLogin() { p.win.Hide() }
 func (p *syncPage) Close()     { p.win.Destroy() }
+
+// quietPage is a sync page that never shows itself to ask for a sign-in.
+type quietPage struct{ *syncPage }
+
+func (quietPage) ShowLogin() {}

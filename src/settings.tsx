@@ -6,6 +6,15 @@ import { announce } from "./state";
 const size = (bytes: number) =>
   bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : bytes < 1e9 ? `${(bytes / 1e6).toFixed(0)} MB` : `${(bytes / 1e9).toFixed(1)} GB`;
 
+const syncChoices: [number, string][] = [
+  [0, "Only when I ask"],
+  [15, "Every 15 minutes"],
+  [30, "Every 30 minutes"],
+  [60, "Every hour"],
+  [180, "Every 3 hours"],
+  [720, "Twice a day"],
+];
+
 /** The settings button in the rail and the dialog it opens. */
 export function SettingsButton() {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -64,6 +73,27 @@ export function SettingsButton() {
           </div>
           {s && (
             <>
+              <section class="setting">
+                <h3>Background sync</h3>
+                <p class="hint">
+                  roost checks X for new bookmarks while it is open, even with its window closed. It lives in the menu bar until you quit
+                  it.
+                </p>
+                <label class="field">
+                  <span>Check</span>
+                  <select value={s.syncEvery} onChange={(e) => change({ syncEvery: Number(e.currentTarget.value) })}>
+                    {syncChoices.map(([minutes, label]) => (
+                      <option key={minutes} value={minutes}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label class="check">
+                  <input type="checkbox" checked={s.notify} disabled={s.syncEvery === 0} onChange={(e) => change({ notify: e.currentTarget.checked })} />
+                  <span>Tell me when new bookmarks arrive</span>
+                </label>
+              </section>
               <section class="setting">
                 <h3>Offline media</h3>
                 <p class="hint">

@@ -734,6 +734,16 @@ kbd {
 .setting h3 { margin: 0; font: 600 17px var(--serif); }
 .setting .check { margin: 0; }
 .setting select, .setting input[type="number"] { font: 14px var(--mono); }
+.setting .field { display: flex; align-items: center; gap: 12px; font-size: 15px; }
+.setting .field select {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--card);
+  color: var(--ink);
+}
+.setting .check:has(input:disabled) { color: var(--ink-3); cursor: default; }
 .rail { display: flex; flex-direction: column; }
 .rail > .add, .rail-foot .add { align-self: flex-start; text-align: left; }
 

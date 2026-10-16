@@ -263,6 +263,14 @@ func TestSettingsAndMediaURLs(t *testing.T) {
 	if urls, _ := s.MediaURLs(true); len(urls) != 4 {
 		t.Errorf("with videos = %v", urls)
 	}
+
+	s.Ingest([]xparse.Entry{entry("2", 11, "b", false), entry("3", 12, "b", false)}, time.Unix(5, 0))
+	if got, _ := s.NewAuthors(time.Unix(5, 0)); len(got) != 1 || got[0] != "ada" {
+		t.Errorf("new authors = %v", got)
+	}
+	if got, _ := s.NewAuthors(time.Unix(6, 0)); len(got) != 0 {
+		t.Errorf("new authors later = %v", got)
+	}
 }
 
 func TestThreads(t *testing.T) {
