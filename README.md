@@ -105,8 +105,8 @@ remove your saved bookmarks.
 
 ## Develop
 
-roost is a [mygo](https://github.com/egoist/mygo) app: Go for the library,
-sync and storage, and Preact in the system webview for the interface.
+roost is a [mygo](https://github.com/egoist/mygo) app. Go runs the library,
+sync and storage, and Preact draws the interface in the system webview.
 
 ```sh
 bun install
@@ -129,6 +129,6 @@ and large libraries. A switch at the foot of the page moves between them.
    the disk image to a draft GitHub release.
 3. Publish the draft. Installed copies pick it up within a day.
 
-The key that signs updates is the only one installed copies trust: keep a
-copy in a password manager, because losing it means friends have to
-reinstall by hand.
+Installed copies trust only the key that signs updates. Keep a copy of it
+in a password manager, because losing it means friends have to reinstall
+by hand.
