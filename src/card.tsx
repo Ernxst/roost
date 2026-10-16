@@ -2,7 +2,7 @@ import { useComputed } from "@preact/signals";
 import { Component } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import type { Bookmark, Collection } from "./mygo";
-import { collections, cursor, opened } from "./state";
+import { collections, cursor, opened, selected, toggleSelected } from "./state";
 import { Avatar, MediaGrid, Quoted, shortDate, Text } from "./tweet";
 
 /** The ink colour of a collection's hue, dark enough on a card in either scheme to read as text. */
@@ -43,13 +43,15 @@ function CardBody({ b }: { b: Bookmark }) {
   // Watches only whether this card holds the cursor, so moving it re-renders two cards.
   const active = useComputed(() => cursor.value === t.id).value;
   // The cursor moves by key, often with the key held down, so the feed jumps rather than glides to it.
+  const picked = useComputed(() => selected.value.has(t.id)).value;
+  const picking = useComputed(() => selected.value.size > 0).value;
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: "nearest" });
   }, [active]);
   return (
     <article
       ref={ref}
-      class={`card${active ? " cursor" : ""}${b.removedAt ? " gone" : ""}`}
+      class={`card${active ? " cursor" : ""}${b.removedAt ? " gone" : ""}${picked ? " picked" : ""}${picking ? " picking" : ""}`}
       aria-labelledby={`by-${t.id}`}
     >
       <header class="byline">
@@ -59,6 +61,10 @@ function CardBody({ b }: { b: Bookmark }) {
           <span class="handle">@{t.authorHandle}</span>
         </span>
         <time dateTime={t.createdAt}>{shortDate(t.createdAt)}</time>
+        <label class="pick">
+          <input type="checkbox" checked={picked} onChange={() => toggleSelected(t.id)} />
+          <span class="sr-only">Select post by {t.authorName}</span>
+        </label>
       </header>
       {b.threadLength > 1 && <span class="thread-tag">thread · {b.threadLength} posts</span>}
       <button class="open" onClick={() => ((opened.value = t.id), (cursor.value = t.id))}>

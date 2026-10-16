@@ -27,6 +27,10 @@ import {
   refreshMeta,
   saveNote,
   search,
+  selected,
+  setAsideSelected,
+  fileSelected,
+  toggleSelected,
   startSync,
   stats,
   toggleCollection,
@@ -516,6 +520,7 @@ function Feed() {
         ))}
       </div>
       <div ref={sentinel} class="sentinel" aria-hidden="true" />
+      <SelectionBar />
     </section>
   );
 }
@@ -533,6 +538,57 @@ function emptyText(v: View): string {
     default:
       return "Nothing here yet.";
   }
+}
+
+/** Actions on the selected bookmarks, shown while any are selected. */
+function SelectionBar() {
+  const target = useSignal("");
+  const n = selected.value.size;
+  if (n === 0) return null;
+  const v = view.value;
+  return (
+    <form
+      class="selection-bar"
+      aria-label="Selected posts"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (target.value) fileSelected(Number(target.value));
+      }}
+    >
+      <span class="selection-count">
+        {n.toLocaleString()} selected
+      </span>
+      {manual().length > 0 && (
+        <>
+          <label for="file-selected" class="sr-only">
+            Collection
+          </label>
+          <select id="file-selected" value={target.value} onChange={(e) => (target.value = e.currentTarget.value)}>
+            <option value="">Choose a collection…</option>
+            {manual().map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button class="press" type="submit" disabled={!target.value}>
+            File
+          </button>
+        </>
+      )}
+      {v.kind === "unsorted" && (
+        <button class="press quiet" type="button" onClick={setAsideSelected} title="Leave them out of the sorting queue">
+          Set aside
+        </button>
+      )}
+      <button class="press quiet" type="button" onClick={() => (selected.value = new Set(items.value.map((b) => b.tweet.id)))}>
+        Select all {items.value.length.toLocaleString()}
+      </button>
+      <button class="press quiet" type="button" onClick={() => (selected.value = new Set())}>
+        <kbd aria-hidden="true">esc</kbd>Clear
+      </button>
+    </form>
+  );
 }
 
 function Empty() {
@@ -728,6 +784,10 @@ function useKeyboard() {
         opened.value = null;
         return;
       }
+      if (e.key === "Escape" && selected.value.size > 0 && !typing(e)) {
+        selected.value = new Set();
+        return;
+      }
       if (typing(e)) return;
       // Search narrows the sorting queue too, so / works everywhere.
       if (e.key === "/") {
@@ -750,6 +810,8 @@ function useKeyboard() {
         opened.value = current.tweet.id;
       } else if (e.key === "o" && current) {
         Library.open(current.tweet.url);
+      } else if (e.key === "x" && current) {
+        toggleSelected(current.tweet.id);
       } else if (/^[1-9]$/.test(e.key) && current) {
         const c = manual()[Number(e.key) - 1];
         if (c) toggleCollection(current, c.id);
