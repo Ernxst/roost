@@ -704,25 +704,9 @@ function Sheet() {
             {t.quoted && <Quoted tweet={t.quoted} />}
             <Thread b={b} />
           </Highlighter>
-          <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} />
           <Links b={b} onRead={(url) => (reading.value = url)} />
         </>
       )}
-      <p class="meta">
-        Posted <time dateTime={t.createdAt}>{longDate(t.createdAt)}</time>
-        <br />
-        In roost since <time dateTime={b.firstSeenAt}>{longDay(b.firstSeenAt)}</time>
-        {b.removedAt && (
-          <>
-            <br />
-            Gone from X since <time dateTime={b.removedAt}>{longDay(b.removedAt)}</time>
-          </>
-        )}
-      </p>
-      <a class="press link" href={t.url} onClick={(e) => openExternal(e, t.url)}>
-        Open on X ↗
-      </a>
-
       <fieldset class="file-under">
         <legend>File under</legend>
         <SuggestedChips ids={suggested.value} onFile={(id) => toggleCollection(b, id)} />
@@ -753,6 +737,21 @@ function Sheet() {
           placeholder="Why you kept it…"
         />
       </label>
+      {!isFixtureMode && <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} />}
+      <p class="meta">
+        Posted <time dateTime={t.createdAt}>{longDate(t.createdAt)}</time>
+        <br />
+        In roost since <time dateTime={b.firstSeenAt}>{longDay(b.firstSeenAt)}</time>
+        {b.removedAt && (
+          <>
+            <br />
+            Gone from X since <time dateTime={b.removedAt}>{longDay(b.removedAt)}</time>
+          </>
+        )}
+      </p>
+      <a class="press link" href={t.url} onClick={(e) => openExternal(e, t.url)}>
+        Open on X ↗
+      </a>
     </aside>
   );
 }
