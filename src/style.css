@@ -14,6 +14,9 @@
   --focus: light-dark(#1f5fd6, #8db4ff);
   --image-outline: light-dark(oklch(0 0 0 / 0.1), oklch(1 0 0 / 0.1));
   --shadow: light-dark(oklch(0.25 0.03 70 / 0.16), oklch(0 0 0 / 0.5));
+  /* Highlighter ink: pale yellow under dark text, deep mustard under light. */
+  --highlight: light-dark(oklch(0.88 0.15 95 / 0.7), oklch(0.45 0.1 95 / 0.7));
+  --highlight-edge: light-dark(oklch(0.82 0.15 95), oklch(0.72 0.14 95));
   --serif: "New York", ui-serif, "Iowan Old Style", Georgia, serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
   --ease: cubic-bezier(0.2, 0, 0, 1);
@@ -931,7 +934,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 
 .highlightable { position: relative; }
 .highlightable ::selection { background: color-mix(in oklch, var(--accent) 28%, transparent); }
-mark { background: color-mix(in oklch, oklch(0.88 0.15 95) 70%, transparent); color: inherit; padding: 0 1px; border-radius: 2px; }
+mark { background: var(--highlight); color: inherit; padding: 0 1px; border-radius: 2px; }
 .highlight-pop {
   position: fixed;
   z-index: 30;
@@ -956,7 +959,7 @@ mark { background: color-mix(in oklch, oklch(0.88 0.15 95) 70%, transparent); co
 .highlight-list blockquote, .clipping blockquote {
   margin: 0;
   padding: 2px 0 2px 12px;
-  border-left: 3px solid oklch(0.82 0.15 95);
+  border-left: 3px solid var(--highlight-edge);
   font: italic 16px/1.5 var(--serif);
 }
 .highlight-list .close { position: absolute; top: 0; right: 0; }
