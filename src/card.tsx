@@ -43,7 +43,7 @@ function CardBody({ b }: { b: Bookmark }) {
   // Watches only whether this card holds the cursor, so moving it re-renders two cards.
   const active = useComputed(() => cursor.value === t.id).value;
   useEffect(() => {
-    if (active) ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (active) ref.current?.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [active]);
   return (
     <article
