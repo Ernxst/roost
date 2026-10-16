@@ -2,7 +2,7 @@ import { useComputed, useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { ink, Stamps } from "./card";
 import { Library, type Bookmark } from "./mygo";
-import { announce, createCollection, file, items, loading, manual, opened, reload, setAside, stats, total } from "./state";
+import { announce, createCollection, fail, file, items, loading, manual, opened, reload, setAside, stats, total } from "./state";
 import { useSuggestions } from "./suggest";
 import { Avatar, MediaGrid, openExternal, Quoted, shortDate, Text } from "./tweet";
 
@@ -41,15 +41,19 @@ export function SortMode() {
       announce(inside ? `Filed under ${c.name}` : `Taken out of ${c.name}`);
       if (!stay) advance({ b: current, kind: "file", collection: c.id });
     } catch (err) {
-      announce(String(err));
+      fail(err);
     }
   }
 
   async function aside() {
     if (!current) return;
-    await setAside(current, true);
-    announce("Set aside");
-    advance({ b: current, kind: "aside" });
+    try {
+      await setAside(current, true);
+      announce("Set aside");
+      advance({ b: current, kind: "aside" });
+    } catch (err) {
+      fail(err);
+    }
   }
 
   function skip() {
@@ -66,9 +70,13 @@ export function SortMode() {
     done.value = next;
     // Put the post back at the front of the queue.
     items.value = [last.b, ...items.value.filter((b) => b.tweet.id !== last.b.tweet.id)];
-    if (last.kind === "file") await file(last.b, last.collection, false);
-    if (last.kind === "aside") await setAside(last.b, false);
-    announce("Undone");
+    try {
+      if (last.kind === "file") await file(last.b, last.collection, false);
+      if (last.kind === "aside") await setAside(last.b, false);
+      announce("Undone");
+    } catch (err) {
+      fail(err);
+    }
   }
 
   async function createAndFile(e: Event) {
@@ -81,7 +89,7 @@ export function SortMode() {
       naming.value = false;
       name.value = "";
     } catch (err) {
-      announce(String(err).replace(/^Error: /, ""));
+      fail(err);
     }
   }
 

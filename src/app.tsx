@@ -9,6 +9,9 @@ import {
   collections,
   createCollection,
   cursor,
+  dismissNotice,
+  errorText,
+  fail,
   find,
   items,
   loading,
@@ -16,6 +19,7 @@ import {
   manual,
   markOpened,
   mediaOnly,
+  notice,
   opened,
   progress,
   reload,
@@ -71,7 +75,23 @@ export function App() {
       <div class="sr-only" role="status" aria-live="polite">
         {announcement.value}
       </div>
+      <Notice />
       {import.meta.env.DEV && <FixtureSwitcher />}
+    </div>
+  );
+}
+
+/** The live region's message, shown for sighted readers too. */
+function Notice() {
+  const n = notice.value;
+  return (
+    <div class={n.error ? "notice error" : "notice"} data-shown={n.shown || undefined} aria-hidden={!n.shown || undefined}>
+      <p>{n.text}</p>
+      {n.error && (
+        <button class="close" onClick={dismissNotice} aria-label="Dismiss" tabIndex={n.shown ? 0 : -1}>
+          ✕
+        </button>
+      )}
     </div>
   );
 }
@@ -145,7 +165,7 @@ function Rail() {
       adding.value = false;
       view.value = { kind: "collection", id: c.id };
     } catch (err) {
-      error.value = String(err).replace(/^Error: /, "");
+      error.value = errorText(err);
     }
   }
 
@@ -372,7 +392,7 @@ function SaveSearch() {
       search.value = "";
       view.value = { kind: "collection", id: c.id };
     } catch (err) {
-      announce(String(err).replace(/^Error: /, ""));
+      fail(err);
     }
   }
   if (!naming.value) {
@@ -511,7 +531,7 @@ function Empty() {
       reload();
       refreshMeta();
     } catch (err) {
-      announce(String(err));
+      fail(err);
     }
   }
   return (

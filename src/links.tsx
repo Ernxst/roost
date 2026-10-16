@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { Library, type Bookmark, type Page, type SavedLink } from "./mygo";
-import { announce } from "./state";
+import { fail } from "./state";
 import { Highlighter, marked } from "./highlights";
 import type { Highlight } from "./mygo";
 import { openExternal } from "./tweet";
@@ -60,7 +60,7 @@ export function Reader({
   useEffect(() => {
     Library.page(url)
       .then((p) => (page.value = p))
-      .catch((err) => announce(String(err)));
+      .catch((err) => fail(err));
   }, [url]);
   const p = page.value;
   return (

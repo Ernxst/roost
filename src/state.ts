@@ -34,10 +34,34 @@ export const opened = signal<string | null>(null);
 export const progress = signal<Progress | null>(null);
 /** Text for the polite live region: results, sync outcomes, errors. */
 export const announcement = signal("");
+/**
+ * The same message as a slip at the foot of the window. Results fade after a
+ * few seconds; an error stays until it is dismissed or replaced.
+ */
+export const notice = signal<{ text: string; error: boolean; shown: boolean }>({ text: "", error: false, shown: false });
+let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
-export function announce(text: string) {
+export function announce(text: string, error = false) {
   announcement.value = "";
   requestAnimationFrame(() => (announcement.value = text));
+  clearTimeout(noticeTimer);
+  notice.value = { text, error, shown: true };
+  if (!error) noticeTimer = setTimeout(dismissNotice, 4000);
+}
+
+export function dismissNotice() {
+  clearTimeout(noticeTimer);
+  notice.value = { ...notice.value, shown: false };
+}
+
+/** An error from Go or the page, as a sentence. */
+export function errorText(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.charAt(0).toUpperCase() + message.slice(1);
+}
+
+export function fail(err: unknown) {
+  announce(errorText(err), true);
 }
 
 function query(offset: number): Query {
@@ -78,7 +102,7 @@ export async function reload() {
         total.value = res.total;
       });
     } catch (err) {
-      announce(String(err));
+      fail(err);
     } finally {
       if (g === generation) loading.value = false;
     }
@@ -92,7 +116,7 @@ export async function reload() {
       total.value = res.total;
     });
   } catch (err) {
-    announce(String(err));
+    fail(err);
   } finally {
     if (g === generation) loading.value = false;
   }
@@ -112,7 +136,7 @@ export async function loadMore() {
         total.value = res.total;
       });
     } catch (err) {
-      announce(String(err));
+      fail(err);
     } finally {
       if (g === generation) loading.value = false;
     }
@@ -126,6 +150,8 @@ export async function loadMore() {
       items.value = [...items.value, ...res.items.filter((b) => !seen.has(b.tweet.id))];
       total.value = res.total;
     });
+  } catch (err) {
+    fail(err);
   } finally {
     if (g === generation) loading.value = false;
   }
@@ -142,16 +168,20 @@ export async function refreshMeta() {
         authors.value = meta.authors;
       });
     } catch (err) {
-      announce(String(err));
+      fail(err);
     }
     return;
   }
-  const [s, c, a] = await Promise.all([Library.stats(), Library.collections(), Library.authors(8)]);
-  batch(() => {
-    stats.value = s;
-    collections.value = c;
-    authors.value = a;
-  });
+  try {
+    const [s, c, a] = await Promise.all([Library.stats(), Library.collections(), Library.authors(8)]);
+    batch(() => {
+      stats.value = s;
+      collections.value = c;
+      authors.value = a;
+    });
+  } catch (err) {
+    fail(err);
+  }
 }
 
 // Reload whenever the view or filters change; typing waits for a pause.
@@ -181,7 +211,7 @@ export async function loadRevisit() {
   try {
     revisit.value = await Library.revisit(6);
   } catch (err) {
-    announce(String(err));
+    fail(err);
   }
 }
 
@@ -195,7 +225,7 @@ export async function openPost(id: string) {
       const b = await Library.get(id);
       extra.value = [...extra.value.filter((x) => x.tweet.id !== id), b];
     } catch (err) {
-      announce(String(err));
+      fail(err);
       return;
     }
   }
@@ -208,7 +238,7 @@ export async function loadHighlights() {
   try {
     highlights.value = await Library.allHighlights();
   } catch (err) {
-    announce(String(err));
+    fail(err);
   }
 }
 
@@ -237,7 +267,7 @@ export function markOpened(b: Bookmark) {
   if (isFixtureMode) return;
   if (b.openedAt) return;
   patch(b.tweet.id, (x) => ({ ...x, openedAt: new Date().toISOString() }));
-  Library.markOpened(b.tweet.id).catch((err) => announce(String(err)));
+  Library.markOpened(b.tweet.id).catch((err) => fail(err));
 }
 
 export async function setAside(b: Bookmark, aside: boolean) {
@@ -272,7 +302,7 @@ export async function toggleCollection(b: Bookmark, collectionID: number) {
     await Library.setInCollection(b.tweet.id, collectionID, inside);
     announce(inside ? `Added to ${name}` : `Removed from ${name}`);
   } catch (err) {
-    announce(String(err));
+    fail(err);
     reload();
   }
   refreshMeta();
@@ -282,8 +312,12 @@ export async function saveNote(b: Bookmark, note: string) {
   if (isFixtureMode) return;
   if (note.trim() === b.note) return;
   patch(b.tweet.id, (x) => ({ ...x, note: note.trim() }));
-  await Library.setNote(b.tweet.id, note);
-  announce("Note saved");
+  try {
+    await Library.setNote(b.tweet.id, note);
+    announce("Note saved");
+  } catch (err) {
+    fail(err);
+  }
 }
 
 // Hues for new collections, spaced so neighbours stay distinct.
@@ -308,7 +342,7 @@ export async function startSync(full: boolean) {
     await Library.sync(full);
   } catch (err) {
     progress.value = null;
-    announce(String(err));
+    fail(err);
   }
 }
 

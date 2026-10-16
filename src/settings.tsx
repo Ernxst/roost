@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { useRef } from "preact/hooks";
 import { Library, type MediaUsage, type Result, type Settings } from "./mygo";
-import { announce } from "./state";
+import { announce, fail } from "./state";
 
 const size = (bytes: number) =>
   bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : bytes < 1e9 ? `${(bytes / 1e6).toFixed(0)} MB` : `${(bytes / 1e9).toFixed(1)} GB`;
@@ -33,7 +33,7 @@ export function SettingsButton() {
         announce(`Exported ${res.notes} notes`);
       }
     } catch (err) {
-      announce(String(err));
+      fail(err);
     } finally {
       exporting.value = false;
     }
@@ -51,7 +51,7 @@ export function SettingsButton() {
     try {
       await Library.saveSettings(next);
     } catch (err) {
-      announce(String(err));
+      fail(err);
     }
   }
 

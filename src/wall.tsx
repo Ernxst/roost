@@ -2,7 +2,7 @@ import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { Stamps } from "./card";
 import { Library, type Bookmark, type Duplicates, type Media } from "./mygo";
-import { announce, openPost, stats } from "./state";
+import { fail, openPost, stats } from "./state";
 import { Avatar, cached, shortDate } from "./tweet";
 
 type Kind = "all" | "photo" | "video" | "animated_gif";
@@ -18,7 +18,7 @@ function useLoad<T>(load: () => Promise<T[]>) {
   const list = useSignal<T[] | null>(null);
   const total = stats.value?.total;
   useEffect(() => {
-    load().then((v) => (list.value = v), (err) => announce(String(err)));
+    load().then((v) => (list.value = v), (err) => fail(err));
   }, [total]);
   return list.value;
 }

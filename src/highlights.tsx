@@ -2,7 +2,7 @@ import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { Library, type Bookmark, type Highlight } from "./mygo";
-import { announce, highlights, openPost } from "./state";
+import { announce, fail, highlights, openPost } from "./state";
 import { Avatar, shortDate } from "./tweet";
 
 /**
@@ -51,7 +51,7 @@ export function Highlighter({
       onAdd(h);
       announce("Highlighted");
     } catch (err) {
-      announce(String(err));
+      fail(err);
     }
   }
 
@@ -172,9 +172,15 @@ export function usePostHighlights(b: Bookmark | undefined) {
     list,
     add: (h: Highlight) => (list.value = [...list.value, h]),
     remove: async (id: number) => {
-      list.value = list.value.filter((h) => h.id !== id);
-      await Library.deleteHighlight(id);
-      announce("Highlight removed");
+      const before = list.value;
+      list.value = before.filter((h) => h.id !== id);
+      try {
+        await Library.deleteHighlight(id);
+        announce("Highlight removed");
+      } catch (err) {
+        list.value = before;
+        fail(err);
+      }
     },
   };
 }

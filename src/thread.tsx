@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { Library, type Bookmark, type Tweet } from "./mygo";
-import { announce, reload } from "./state";
+import { announce, fail, reload } from "./state";
 import { MediaGrid, Quoted, shortDate, Text } from "./tweet";
 
 /** The rest of a post's thread, read in order, with the kept post marked. */
@@ -22,7 +22,7 @@ export function Thread({ b }: { b: Bookmark }) {
       announce(p.length > 1 ? `Found a thread of ${p.length} posts` : "This post stands alone");
       if (p.length > 1) reload();
     } catch (err) {
-      announce(String(err));
+      fail(err);
     } finally {
       busy.value = false;
     }
