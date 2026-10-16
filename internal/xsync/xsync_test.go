@@ -80,8 +80,8 @@ func TestFullThenIncremental(t *testing.T) {
 		t.Fatalf("first sync = %+v, logins %d, shown %v", rec, page.logins, page.shown)
 	}
 
-	// Two new bookmarks, then the ones already held: the incremental sync
-	// stops on the page holding the first known one.
+	// The timeline has two new bookmarks, then the ones already held. The
+	// incremental sync stops on the page holding the first known one.
 	page = &fakePage{pages: timeline(7, 6, 5, 4, 3, 2, 1)}
 	rec, err = Run(context.Background(), page, lib, opts(false))
 	if err != nil {

@@ -512,8 +512,8 @@ type Collection struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
 	Hue  int    `json:"hue"`
-	// Query makes a smart collection: it holds the bookmarks matching this
-	// search instead of the ones filed into it.
+	// Query makes a smart collection, which holds the bookmarks matching
+	// this search instead of the ones filed into it.
 	Query string `json:"query"`
 	Count int    `json:"count"`
 }
@@ -762,7 +762,8 @@ type Stats struct {
 	Total    int `json:"total"`
 	Removed  int `json:"removed"`
 	Unsorted int `json:"unsorted"`
-	// ToSort counts unsorted bookmarks not set aside: the sorting queue.
+	// ToSort counts the unsorted bookmarks not set aside, which make up the
+	// sorting queue.
 	ToSort   int   `json:"toSort"`
 	LastSync *Sync `json:"lastSync"`
 }

@@ -631,7 +631,7 @@ func TestTranslationsAreParsedAgainAndSearchable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A post saved by a parser that ignored translations: its data lacks
+	// A parser that ignored translations saved this post, so its data lacks
 	// one, but the raw object X sent has it.
 	e := entry("1", 10, "見て", false)
 	e.Tweet.Raw = []byte(`{"rest_id":"1","core":{"user_results":{"result":{"core":{"screen_name":"ada","name":"Ada Lovelace"}}}},

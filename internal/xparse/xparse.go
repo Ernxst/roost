@@ -15,7 +15,7 @@ import (
 
 // Entry is one bookmark as the timeline lists it.
 type Entry struct {
-	// SortIndex orders the timeline: a larger value was bookmarked later.
+	// SortIndex orders the timeline. A larger value was bookmarked later.
 	SortIndex int64
 	Tweet     Tweet
 }
