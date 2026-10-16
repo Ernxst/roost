@@ -848,3 +848,4 @@ mark { background: color-mix(in oklch, oklch(0.88 0.15 95) 70%, transparent); co
 @media (hover: hover) { .suggestion:hover { background: color-mix(in oklch, var(--hue) 14%, transparent); border-style: solid; } }
 .bin[data-suggested] { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--hue) 45%, transparent); }
 .bin-hint { flex: none !important; font: 10px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.setting .path { padding: 0; border: 0; background: none; font: inherit; color: var(--ink-2); text-decoration: underline; text-underline-offset: 2px; }

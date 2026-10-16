@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"roost/internal/export"
 	"roost/internal/links"
 	"roost/internal/media"
 	"roost/internal/store"
@@ -379,6 +380,45 @@ func (l *Library) Suggest(tweetID string) ([]store.Suggestion, error) {
 	}
 	return s.Suggest(tweetID, 3)
 }
+
+// Export writes the library as Markdown notes. With choose set, or before
+// the first export, it asks for a folder; otherwise it writes to the folder
+// used last time.
+func (l *Library) Export(choose bool) (export.Result, error) {
+	s, err := l.store()
+	if err != nil {
+		return export.Result{}, err
+	}
+	settings, err := s.Settings()
+	if err != nil {
+		return export.Result{}, err
+	}
+	dir := settings.ExportDir
+	if choose || dir == "" {
+		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
+			Parent:            l.main,
+			Title:             "Export to Markdown",
+			Message:           "Choose a folder, such as an Obsidian vault. roost writes its notes into a roost folder inside it.",
+			ButtonLabel:       "Export",
+			Directory:         true,
+			CreateDirectories: true,
+			DefaultPath:       dir,
+		})
+		if err != nil || len(paths) == 0 {
+			return export.Result{}, err
+		}
+		dir = paths[0]
+	}
+	res, err := export.Write(dir, s, l.media.Cached)
+	if err != nil {
+		return res, err
+	}
+	settings.ExportDir = dir
+	return res, s.SaveSettings(settings)
+}
+
+// Reveal shows a file or folder in Finder.
+func (l *Library) Reveal(path string) { mygo.Shell.ShowItemInFolder(path) }
 
 // Get returns one bookmark.
 func (l *Library) Get(tweetID string) (store.Bookmark, error) {

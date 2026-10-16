@@ -208,3 +208,10 @@ func (c *Cache) Usage() (files int, bytes int64, err error) {
 	})
 	return files, bytes, err
 }
+
+// Cached returns the path of u on disk, if it is there.
+func (c *Cache) Cached(u string) (string, bool) {
+	p := c.path(u)
+	_, err := os.Stat(p)
+	return p, err == nil
+}

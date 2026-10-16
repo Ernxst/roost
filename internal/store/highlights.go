@@ -86,3 +86,8 @@ func (s *Store) Get(tweetID string) (Bookmark, error) {
 	}
 	return bs[0], nil
 }
+
+// All returns every bookmark, removed ones included, newest bookmark first.
+func (s *Store) All() ([]Bookmark, error) {
+	return s.selectBookmarks("1 = 1", nil, "ORDER BY b.sort_index DESC")
+}

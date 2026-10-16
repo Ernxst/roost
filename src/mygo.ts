@@ -96,6 +96,12 @@ export interface Query {
   limit: number;
 }
 
+export interface Result {
+  dir: string;
+  notes: number;
+  media: number;
+}
+
 export interface Revisit {
   onThisDay: Bookmark[];
   unopened: Bookmark[];
@@ -191,6 +197,14 @@ export const Library = {
   deleteHighlight(id: number): Promise<void> {
     return call("Library.DeleteHighlight", id);
   },
+  /**
+   * Export writes the library as Markdown notes. With choose set, or before
+   * the first export, it asks for a folder; otherwise it writes to the folder
+   * used last time.
+   */
+  export(choose: boolean): Promise<Result> {
+    return call("Library.Export", choose);
+  },
   /** Get returns one bookmark. */
   get(tweetID: string): Promise<Bookmark> {
     return call("Library.Get", tweetID);
@@ -231,6 +245,10 @@ export const Library = {
   /** Page returns the saved copy of a linked page, text included. */
   page(url: string): Promise<Page | null> {
     return call("Library.Page", url);
+  },
+  /** Reveal shows a file or folder in Finder. */
+  reveal(path: string): Promise<void> {
+    return call("Library.Reveal", path);
   },
   /**
    * Revisit picks bookmarks worth seeing again: posts from this day in

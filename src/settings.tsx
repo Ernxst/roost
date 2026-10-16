@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { useRef } from "preact/hooks";
-import { Library, type MediaUsage, type Settings } from "./mygo";
+import { Library, type MediaUsage, type Result, type Settings } from "./mygo";
 import { announce } from "./state";
 
 const size = (bytes: number) =>
@@ -11,6 +11,24 @@ export function SettingsButton() {
   const dialog = useRef<HTMLDialogElement>(null);
   const settings = useSignal<Settings | null>(null);
   const usage = useSignal<MediaUsage | null>(null);
+  const exporting = useSignal(false);
+  const exported = useSignal<Result | null>(null);
+
+  async function exportNotes(choose: boolean) {
+    exporting.value = true;
+    try {
+      const res = await Library.export(choose);
+      if (res.dir) {
+        exported.value = res;
+        settings.value = await Library.settings();
+        announce(`Exported ${res.notes} notes`);
+      }
+    } catch (err) {
+      announce(String(err));
+    } finally {
+      exporting.value = false;
+    }
+  }
 
   async function open() {
     [settings.value, usage.value] = await Promise.all([Library.settings(), Library.mediaUsage()]);
@@ -56,6 +74,37 @@ export function SettingsButton() {
                   <input type="checkbox" checked={s.cacheVideos} onChange={(e) => change({ cacheVideos: e.currentTarget.checked })} />
                   <span>Keep videos too</span>
                 </label>
+              </section>
+              <section class="setting">
+                <h3>Markdown export</h3>
+                <p class="hint">
+                  One note per bookmark, with its thread, note, highlights, links and images, and one note per collection.
+                  Point it at an Obsidian vault and the links between them just work.
+                </p>
+                <div class="row">
+                  {s.exportDir && (
+                    <button class="press" disabled={exporting.value} onClick={() => exportNotes(false)}>
+                      Export again
+                    </button>
+                  )}
+                  <button class={s.exportDir ? "press quiet" : "press"} disabled={exporting.value} onClick={() => exportNotes(true)}>
+                    {s.exportDir ? "Choose another folder…" : "Export to a folder…"}
+                  </button>
+                </div>
+                {s.exportDir && (
+                  <p class="link-status">
+                    {exporting.value
+                      ? "Writing notes…"
+                      : exported.value
+                        ? `Wrote ${exported.value.notes} notes and ${exported.value.media} images to `
+                        : "Last exported to "}
+                    {!exporting.value && (
+                      <button class="path" onClick={() => Library.reveal(exported.value?.dir ?? `${s.exportDir}/roost`)}>
+                        {(exported.value?.dir ?? `${s.exportDir}/roost`).replace(/^\/Users\/[^/]+/, "~")}
+                      </button>
+                    )}
+                  </p>
+                )}
               </section>
             </>
           )}
