@@ -199,7 +199,7 @@ kbd {
   min-height: 32px;
   border: 0;
   background: none;
-  font: 11.5px var(--mono);
+  font: 14px var(--serif);
   color: var(--ink-2);
   border-radius: 5px;
 }
