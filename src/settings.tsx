@@ -92,8 +92,8 @@ export function SettingsButton() {
               <section class="setting">
                 <h3>Background sync</h3>
                 <p class="hint">
-                  roost checks X for new bookmarks while it is open, even with its window closed. It lives in the menu bar until you quit
-                  it.
+                  roost checks X for new bookmarks while it is open, even with its window closed. Once a week it reads every bookmark to
+                  notice the ones gone from X. It lives in the menu bar until you quit it.
                 </p>
                 <label class="field">
                   <span>Check</span>
@@ -107,7 +107,7 @@ export function SettingsButton() {
                 </label>
                 <label class="check">
                   <input type="checkbox" checked={s.notify} disabled={s.syncEvery === 0} onChange={(e) => change({ notify: e.currentTarget.checked })} />
-                  <span>Tell me when new bookmarks arrive</span>
+                  <span>Tell me when bookmarks arrive or leave X</span>
                 </label>
               </section>
               <section class="setting">

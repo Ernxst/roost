@@ -531,7 +531,7 @@ func (l *Library) startSync(full, background bool) error {
 		if err != nil {
 			log.Printf("sync: %v", err)
 		} else if background {
-			l.notifyAdded(s, rec)
+			l.notifySync(s, rec)
 		}
 		go l.captureThreads()
 		go l.saveLinks()

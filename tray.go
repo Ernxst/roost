@@ -119,8 +119,12 @@ func ago(t, now time.Time) string {
 	return t.Format("2 Jan")
 }
 
-// schedule starts an incremental sync whenever the last one is older than
-// the user's interval, checking once a minute.
+// fullSyncEvery is how often a background sync reads the whole timeline, the
+// only way to notice bookmarks that have gone from X.
+const fullSyncEvery = 7 * 24 * time.Hour
+
+// schedule starts a background sync whenever the last one is older than the
+// user's interval, checking once a minute.
 func (l *Library) schedule() {
 	for range time.Tick(time.Minute) {
 		l.trayChanged()
@@ -129,45 +133,84 @@ func (l *Library) schedule() {
 			continue
 		}
 		set, err := s.Settings()
-		if err != nil || set.SyncEvery <= 0 {
+		if err != nil {
 			continue
 		}
 		st, err := s.Stats()
 		if err != nil {
 			continue
 		}
-		if st.LastSync != nil && time.Since(st.LastSync.FinishedAt) < time.Duration(set.SyncEvery)*time.Minute {
+		lastFull, err := s.LastFullSync()
+		if err != nil {
 			continue
 		}
-		if err := l.startSync(false, true); err == nil {
-			log.Printf("sync: background sync started")
+		due, full := dueSync(st.LastSync, lastFull, set.SyncEvery, time.Now())
+		if !due {
+			continue
+		}
+		if err := l.startSync(full, true); err == nil {
+			log.Printf("sync: background sync started (full: %v)", full)
 		}
 	}
 }
 
-// notifyAdded tells the user about the bookmarks a background sync found.
-func (l *Library) notifyAdded(s *store.Store, rec store.Sync) {
-	if rec.Added == 0 {
-		return
+// dueSync decides whether a background sync is due, every minutes after the
+// last one, and whether it should read the whole timeline because the last
+// complete read finished more than fullSyncEvery ago.
+func dueSync(last *store.Sync, lastFull time.Time, every int, now time.Time) (due, full bool) {
+	if every <= 0 {
+		return false, false
 	}
+	if last != nil && now.Sub(last.FinishedAt) < time.Duration(every)*time.Minute {
+		return false, false
+	}
+	return true, !lastFull.IsZero() && now.Sub(lastFull) >= fullSyncEvery
+}
+
+// notifySync tells the user what a background sync found.
+func (l *Library) notifySync(s *store.Store, rec store.Sync) {
 	set, err := s.Settings()
 	if err != nil || !set.Notify || !mygo.NotificationsSupported() {
 		return
 	}
-	authors, _ := s.NewAuthors(rec.StartedAt)
-	title := "1 new bookmark"
-	if rec.Added > 1 {
-		title = fmt.Sprintf("%d new bookmarks", rec.Added)
+	var authors []string
+	if rec.Added > 0 {
+		authors, _ = s.NewAuthors(rec.StartedAt)
 	}
-	n := mygo.NewNotification(mygo.NotificationOptions{
-		ID:    "sync",
-		Title: title,
-		Body:  byline(authors),
-		Group: "sync",
-	})
+	title, body := syncNotice(rec, authors)
+	if title == "" {
+		return
+	}
+	n := mygo.NewNotification(mygo.NotificationOptions{ID: "sync", Title: title, Body: body, Group: "sync"})
 	if err := n.Show(); err != nil {
 		log.Printf("notify: %v", err)
 	}
+}
+
+// syncNotice words the notification for a sync that added and removed
+// bookmarks, given the new bookmarks' authors; an empty title means there is
+// nothing to tell.
+func syncNotice(rec store.Sync, authors []string) (title, body string) {
+	var gone string
+	switch {
+	case rec.Removed == 1:
+		gone = "1 bookmark is gone from X; roost kept its copy."
+	case rec.Removed > 1:
+		gone = fmt.Sprintf("%d bookmarks are gone from X; roost kept their copies.", rec.Removed)
+	}
+	switch {
+	case rec.Added == 1:
+		title = "1 new bookmark"
+	case rec.Added > 1:
+		title = fmt.Sprintf("%d new bookmarks", rec.Added)
+	case rec.Removed == 1:
+		return "1 bookmark gone from X", "roost kept its copy."
+	case rec.Removed > 1:
+		return fmt.Sprintf("%d bookmarks gone from X", rec.Removed), "roost kept their copies."
+	default:
+		return "", ""
+	}
+	return title, strings.TrimSpace(byline(authors) + "\n" + gone)
 }
 
 // byline names up to three authors, such as "From @ada, @grace and 2 others".

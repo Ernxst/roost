@@ -472,3 +472,21 @@ func TestTranslationsAreParsedAgainAndSearchable(t *testing.T) {
 		t.Fatalf("reopened library = %+v, want the post found by its translation", res.Items)
 	}
 }
+
+func TestLastFullSync(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if at, err := s.LastFullSync(); err != nil || !at.IsZero() {
+		t.Fatalf("empty library: %v, %v", at, err)
+	}
+	s.RecordSync(Sync{Full: true, FinishedAt: time.Unix(100, 0), ReachedEnd: true})
+	s.RecordSync(Sync{Full: false, FinishedAt: time.Unix(200, 0), ReachedEnd: true})
+	s.RecordSync(Sync{Full: true, FinishedAt: time.Unix(300, 0)})
+	s.RecordSync(Sync{Full: true, FinishedAt: time.Unix(400, 0), ReachedEnd: true, Error: "signed out"})
+	if at, _ := s.LastFullSync(); !at.Equal(time.Unix(100, 0)) {
+		t.Errorf("last full sync = %v, want the only complete one", at)
+	}
+}

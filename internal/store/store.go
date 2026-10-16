@@ -639,6 +639,17 @@ func (s *Store) RecordSync(r Sync) error {
 	return err
 }
 
+// LastFullSync is when a sync last read the whole timeline without error,
+// or the zero time if none has.
+func (s *Store) LastFullSync() (time.Time, error) {
+	var at sql.NullInt64
+	err := s.db.QueryRow(`SELECT max(finished_at) FROM syncs WHERE full AND reached_end AND error = ''`).Scan(&at)
+	if err != nil || !at.Valid {
+		return time.Time{}, err
+	}
+	return time.UnixMilli(at.Int64), nil
+}
+
 type Stats struct {
 	Total    int `json:"total"`
 	Removed  int `json:"removed"`
