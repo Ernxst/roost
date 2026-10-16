@@ -48,6 +48,12 @@ export interface Media {
   height: number;
 }
 
+/** MediaUsage is how much media is kept on disk. */
+export interface MediaUsage {
+  files: number;
+  bytes: number;
+}
+
 export type Phase = string;
 
 export interface Progress {
@@ -73,6 +79,13 @@ export interface Revisit {
   onThisDay: Bookmark[];
   unopened: Bookmark[];
   random: Bookmark[];
+}
+
+export interface Settings {
+  cacheVideos: boolean;
+  syncEvery: number;
+  notify: boolean;
+  exportDir: string;
 }
 
 export interface Stats {
@@ -144,6 +157,9 @@ export const Library = {
   markOpened(tweetID: string): Promise<void> {
     return call("Library.MarkOpened", tweetID);
   },
+  mediaUsage(): Promise<MediaUsage> {
+    return call("Library.MediaUsage");
+  },
   /** Open opens a URL in the default browser. */
   open(url: string): Promise<void> {
     return call("Library.Open", url);
@@ -154,6 +170,9 @@ export const Library = {
    */
   revisit(n: number): Promise<Revisit> {
     return call("Library.Revisit", n);
+  },
+  saveSettings(v: Settings): Promise<void> {
+    return call("Library.SaveSettings", v);
   },
   /**
    * SetAside takes a bookmark out of the sorting queue without filing it, or
@@ -168,6 +187,10 @@ export const Library = {
   },
   setNote(tweetID: string, note: string): Promise<void> {
     return call("Library.SetNote", tweetID, note);
+  },
+  /** Settings returns the user's preferences. */
+  settings(): Promise<Settings> {
+    return call("Library.Settings");
   },
   /** Stats counts bookmarks and describes the last sync. */
   stats(): Promise<Stats> {

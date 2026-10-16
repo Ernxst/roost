@@ -71,6 +71,11 @@ ALTER TABLE collections ADD COLUMN query TEXT NOT NULL DEFAULT '';
 `, `
 ALTER TABLE bookmarks ADD COLUMN opened_at INTEGER;
 ALTER TABLE bookmarks ADD COLUMN aside_at INTEGER;
+`, `
+CREATE TABLE settings (
+	key TEXT PRIMARY KEY,
+	value TEXT NOT NULL
+);
 `}
 
 // Open opens the library at path, creating and migrating it as needed.

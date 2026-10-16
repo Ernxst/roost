@@ -676,3 +676,28 @@ kbd {
 }
 .shelf-row > .card { scroll-snap-align: start; }
 .sort-keys .add { justify-self: start; margin: 0; }
+
+/* ---- Settings ---- */
+
+.rail-foot { margin-top: auto; padding-top: 18px; }
+.settings {
+  width: min(480px, 92vw);
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--rule), 0 30px 60px -20px var(--shadow);
+}
+.settings::backdrop { background: oklch(0.2 0.02 70 / 0.28); }
+.settings[open] { animation: settle 180ms var(--ease); }
+@keyframes settle { from { opacity: 0; scale: 0.98; } }
+@media (prefers-reduced-motion: reduce) { .settings[open] { animation: none; } }
+.settings-body { padding: 20px 24px 24px; }
+.settings h2 { margin: 0; }
+.setting { padding: 14px 0; border-top: 1px solid var(--rule); display: grid; gap: 10px; }
+.setting h3 { margin: 0; font: 600 17px var(--serif); }
+.setting .check { margin: 0; }
+.setting select, .setting input[type="number"] { font: 14px var(--mono); }
+.rail { display: flex; flex-direction: column; }
+.rail > .add, .rail-foot .add { align-self: flex-start; text-align: left; }

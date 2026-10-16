@@ -30,6 +30,7 @@ import {
 } from "./state";
 import { Card, ink } from "./card";
 import { RevisitView } from "./revisit";
+import { SettingsButton } from "./settings";
 import { SortMode } from "./sort";
 import { Avatar, MediaGrid, openExternal, Quoted, relative, Text } from "./tweet";
 
@@ -185,6 +186,9 @@ function Rail() {
           </ul>
         </>
       )}
+      <div class="rail-foot">
+        <SettingsButton />
+      </div>
     </nav>
   );
 }

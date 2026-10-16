@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"roost/internal/media"
 	"roost/internal/store"
 	"roost/internal/xparse"
 	"roost/internal/xsync"
@@ -27,6 +28,8 @@ type Library struct {
 	lib     *store.Store
 	main    *mygo.Window
 	syncing bool
+	media   *media.Cache
+	caching sync.Mutex
 }
 
 func (l *Library) store() (*store.Store, error) {
@@ -146,6 +149,63 @@ func (l *Library) Revisit(n int) (store.Revisit, error) {
 	return s.Revisit(time.Now(), n)
 }
 
+// Settings returns the user's preferences.
+func (l *Library) Settings() (store.Settings, error) {
+	s, err := l.store()
+	if err != nil {
+		return store.Settings{}, err
+	}
+	return s.Settings()
+}
+
+func (l *Library) SaveSettings(v store.Settings) error {
+	s, err := l.store()
+	if err != nil {
+		return err
+	}
+	if err := s.SaveSettings(v); err != nil {
+		return err
+	}
+	go l.cacheMedia()
+	return nil
+}
+
+// MediaUsage is how much media is kept on disk.
+type MediaUsage struct {
+	Files int   `json:"files"`
+	Bytes int64 `json:"bytes"`
+}
+
+func (l *Library) MediaUsage() (MediaUsage, error) {
+	files, bytes, err := l.media.Usage()
+	return MediaUsage{files, bytes}, err
+}
+
+// cacheMedia downloads any media in the library not yet on disk. One run
+// happens at a time; a call during a run waits, then fetches whatever is
+// still missing.
+func (l *Library) cacheMedia() {
+	l.caching.Lock()
+	defer l.caching.Unlock()
+	s, err := l.store()
+	if err != nil {
+		return
+	}
+	settings, err := s.Settings()
+	if err != nil {
+		log.Printf("media: %v", err)
+		return
+	}
+	urls, err := s.MediaURLs(settings.CacheVideos)
+	if err != nil {
+		log.Printf("media: %v", err)
+		return
+	}
+	if n := l.media.Prefetch(context.Background(), urls); n > 0 {
+		log.Printf("media: kept %d new files", n)
+	}
+}
+
 // Sync starts bringing the library up to date with X and returns at once;
 // SyncProgress reports how it goes. A full sync reads every bookmark and
 // marks the ones gone from X as removed.
@@ -180,6 +240,7 @@ func (l *Library) Sync(full bool) error {
 		if err != nil {
 			log.Printf("sync: %v", err)
 		}
+		l.cacheMedia()
 	}()
 	return nil
 }
@@ -246,6 +307,11 @@ func main() {
 		library.mu.Lock()
 		library.lib = lib
 		library.mu.Unlock()
+		library.media = media.New(filepath.Join(dir, "media"))
+		if err := mygo.Protocol.Handle(media.Scheme, library.media); err != nil {
+			log.Fatalf("media: %v", err)
+		}
+		go library.cacheMedia()
 		library.main = mygo.NewWindow(mygo.WindowOptions{
 			Title:           "roost",
 			Width:           1240,

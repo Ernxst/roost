@@ -234,3 +234,32 @@ func TestOpenedAsideAndRevisit(t *testing.T) {
 		t.Errorf("unopened %d, random %d; want 2 and 3", len(r.Unopened), len(r.Random))
 	}
 }
+
+func TestSettingsAndMediaURLs(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if v, _ := s.Settings(); v.SyncEvery != 60 || !v.Notify {
+		t.Errorf("default settings = %+v", v)
+	}
+	if err := s.SaveSettings(Settings{CacheVideos: true}); err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := s.Settings(); !v.CacheVideos || v.SyncEvery != 0 {
+		t.Errorf("saved settings = %+v", v)
+	}
+
+	e := entry("1", 10, "a", false)
+	e.Tweet.AuthorAvatar = "https://pbs.twimg.com/a.jpg"
+	e.Tweet.Media = []xparse.Media{{Kind: "video", Thumb: "https://pbs.twimg.com/v.jpg", Video: "https://video.twimg.com/v.mp4"}}
+	s.Ingest([]xparse.Entry{e}, time.Unix(1, 0))
+	urls, err := s.MediaURLs(false)
+	if err != nil || len(urls) != 3 {
+		t.Fatalf("urls = %v, %v", urls, err)
+	}
+	if urls, _ := s.MediaURLs(true); len(urls) != 4 {
+		t.Errorf("with videos = %v", urls)
+	}
+}

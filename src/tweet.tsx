@@ -61,9 +61,12 @@ export function relative(iso: string) {
   return dayFormat.format(new Date(iso));
 }
 
+/** Loads X media through roost's on-disk copy, fetching it the first time. */
+export const cached = (url: string) => `roost-media://localhost/?u=${encodeURIComponent(url)}`;
+
 export function Avatar({ src, size = 28 }: { src: string; size?: number }) {
   if (!src) return <span class="avatar blank" style={{ width: size, height: size }} aria-hidden="true" />;
-  return <img class="avatar" src={src} width={size} height={size} alt="" loading="lazy" />;
+  return <img class="avatar" src={cached(src)} width={size} height={size} alt="" loading="lazy" />;
 }
 
 /** Media laid out as X does: one item at its own shape, more in a grid. */
@@ -79,8 +82,8 @@ export function MediaGrid({ media, playable = false }: { media: Media[]; playabl
           return (
             <video
               key={m.thumb}
-              src={m.video}
-              poster={m.thumb}
+              src={cached(m.video)}
+              poster={cached(m.thumb)}
               controls
               playsInline
               loop={m.kind === "animated_gif"}
@@ -90,7 +93,7 @@ export function MediaGrid({ media, playable = false }: { media: Media[]; playabl
         }
         return (
           <figure key={m.thumb} class="frame" style={style}>
-            <img src={`${m.thumb}?name=small`} alt="" loading="lazy" />
+            <img src={cached(`${m.thumb}?name=small`)} alt="" loading="lazy" />
             {m.kind !== "photo" && (
               <span class="badge" aria-label={m.kind === "video" ? "Video" : "GIF"}>
                 {m.kind === "video" ? "▶" : "GIF"}
