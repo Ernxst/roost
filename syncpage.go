@@ -1,22 +1,20 @@
 package main
 
-import (
-	"roost/internal/xsync"
-
-	"github.com/egoist/mygo"
-)
+import "github.com/egoist/mygo"
 
 // capture runs in x.com before X's own scripts and copies the body of every
-// Bookmarks GraphQL response into window.__roost for the sync to drain.
+// Bookmarks GraphQL response into window.__roost, and every TweetDetail
+// response into window.__roostDetail, for Go to drain.
 const capture = `(() => {
   if (!/(^|\.)x\.com$/.test(location.hostname)) return;
-  const queue = (window.__roost = []);
-  const wanted = (url) => /\/graphql\/[^/]+\/Bookmarks(\?|$)/.test(String(url));
+  const queues = { Bookmarks: (window.__roost = []), TweetDetail: (window.__roostDetail = []) };
+  const queueFor = (url) => queues[(/\/graphql\/[^/]+\/(\w+)(\?|$)/.exec(String(url)) || [])[1]];
   const fetch = window.fetch;
   window.fetch = async function (input, init) {
     const res = await fetch.apply(this, arguments);
     const url = typeof input === "string" ? input : input && input.url;
-    if (wanted(url)) res.clone().text().then((t) => queue.push(t), () => {});
+    const queue = queueFor(url);
+    if (queue) res.clone().text().then((t) => queue.push(t), () => {});
     return res;
   };
   const open = XMLHttpRequest.prototype.open;
@@ -27,7 +25,8 @@ const capture = `(() => {
   const send = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function () {
     this.addEventListener("load", () => {
-      if (wanted(this.__roostUrl) && typeof this.responseText === "string") queue.push(this.responseText);
+      const queue = queueFor(this.__roostUrl);
+      if (queue && typeof this.responseText === "string") queue.push(this.responseText);
     });
     return send.apply(this, arguments);
   };
@@ -37,10 +36,10 @@ const capture = `(() => {
 // to sign in to X.
 type syncPage struct{ win *mygo.Window }
 
-func openSyncPage(parent *mygo.Window) *syncPage {
+func openSyncPage(parent *mygo.Window, url string) *syncPage {
 	win := mygo.NewWindow(mygo.WindowOptions{
 		Title:  "Sign in to X for roost",
-		URL:    xsync.BookmarksURL,
+		URL:    url,
 		Width:  520,
 		Height: 760,
 		Hidden: true,
@@ -54,6 +53,14 @@ func (p *syncPage) URL() (string, error) { return p.win.Page().URL(), nil }
 
 func (p *syncPage) Drain() ([]string, error) {
 	return mygo.EvalAs[[]string](p.win.Page(), "return (window.__roost || []).splice(0)")
+}
+
+func (p *syncPage) DrainDetail() ([]string, error) {
+	return mygo.EvalAs[[]string](p.win.Page(), "return (window.__roostDetail || []).splice(0)")
+}
+
+func (p *syncPage) Load(url string) error {
+	return p.win.Page().LoadURL(url)
 }
 
 func (p *syncPage) Scroll() error {

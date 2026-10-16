@@ -152,7 +152,12 @@ export function markOpened(b: Bookmark) {
 export async function setAside(b: Bookmark, aside: boolean) {
   patch(b.tweet.id, (x) => ({ ...x, asideAt: aside ? new Date().toISOString() : null }));
   await Library.setAside(b.tweet.id, aside);
-  refreshMeta();
+  events.threadsFound.on((n) => {
+  reload();
+  announce(`Found ${n} ${n === 1 ? "thread" : "threads"} among your bookmarks`);
+});
+
+refreshMeta();
 }
 
 /** Files a post into a collection, or takes it out, without the toggle's guesswork. */

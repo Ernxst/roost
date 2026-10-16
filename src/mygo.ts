@@ -19,6 +19,7 @@ export interface Bookmark {
   removedAt: string | null;
   openedAt: string | null;
   asideAt: string | null;
+  threadLength: number;
 }
 
 export interface Collection {
@@ -118,6 +119,7 @@ export interface Tweet {
   media: Media[];
   links: Link[];
   quoted?: Tweet;
+  replyTo?: string;
 }
 
 // ---- Services ----
@@ -152,6 +154,10 @@ export const Library = {
   /** List returns the bookmarks matching the query, newest bookmark first. */
   list(q: Query): Promise<ListResult> {
     return call("Library.List", q);
+  },
+  /** LoadThread reads a bookmark's thread from X now and returns it. */
+  loadThread(tweetID: string, url: string): Promise<Tweet[]> {
+    return call("Library.LoadThread", tweetID, url);
   },
   /** MarkOpened records that the user opened a bookmark in roost. */
   markOpened(tweetID: string): Promise<void> {
@@ -204,6 +210,13 @@ export const Library = {
   sync(full: boolean): Promise<void> {
     return call("Library.Sync", full);
   },
+  /**
+   * Thread returns the posts in a bookmark's thread, in reading order, or
+   * none if it stands alone or has not been checked.
+   */
+  thread(tweetID: string): Promise<Tweet[]> {
+    return call("Library.Thread", tweetID);
+  },
   updateCollection(id: number, name: string, hue: number, query: string): Promise<void> {
     return call("Library.UpdateCollection", id, name, hue, query);
   },
@@ -215,4 +228,9 @@ export const Library = {
 export const events = {
   /** SyncProgress reports each stage of a sync to the page. */
   syncProgress: event<Progress>("syncProgress"),
+  /**
+   * ThreadsFound reports how many threads a background pass found, so the page
+   * can show them.
+   */
+  threadsFound: event<number>("threadsFound"),
 } as const;

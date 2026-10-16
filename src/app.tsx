@@ -32,6 +32,7 @@ import { Card, ink } from "./card";
 import { RevisitView } from "./revisit";
 import { SettingsButton } from "./settings";
 import { SortMode } from "./sort";
+import { Thread } from "./thread";
 import { Avatar, MediaGrid, openExternal, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
@@ -278,7 +279,7 @@ function Toolbar() {
 
 const HINTS: [string, string][] = [
   ["from:", "posts by an author"],
-  ["has:video", "also photo, gif, link, quote, note"],
+  ["has:video", "also photo, gif, link, quote, note, thread"],
   ["in:", "in a collection; in:none for unsorted"],
   ["-", "leave out a word or filter"],
   ["before:2025-01-01", "or after:, by post date"],
@@ -513,6 +514,7 @@ function Sheet() {
       {t.text && <Text tweet={t} />}
       <MediaGrid media={t.media} playable />
       {t.quoted && <Quoted tweet={t.quoted} />}
+      <Thread b={b} />
       <p class="meta">
         Posted <time dateTime={t.createdAt}>{new Date(t.createdAt).toLocaleString()}</time>
         <br />

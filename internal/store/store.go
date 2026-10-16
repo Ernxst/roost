@@ -76,6 +76,14 @@ CREATE TABLE settings (
 	key TEXT PRIMARY KEY,
 	value TEXT NOT NULL
 );
+`, `
+CREATE TABLE threads (
+	tweet_id TEXT PRIMARY KEY REFERENCES tweets(id),
+	checked_at INTEGER NOT NULL,
+	length INTEGER NOT NULL DEFAULT 0,
+	posts TEXT NOT NULL DEFAULT '[]'
+);
+CREATE VIRTUAL TABLE threads_fts USING fts5(text, tokenize = 'unicode61 remove_diacritics 2');
 `}
 
 // Open opens the library at path, creating and migrating it as needed.
@@ -197,6 +205,9 @@ type Bookmark struct {
 	RemovedAt   *time.Time   `json:"removedAt"`
 	OpenedAt    *time.Time   `json:"openedAt"`
 	AsideAt     *time.Time   `json:"asideAt"`
+	// ThreadLength is the number of posts in the post's thread, or 0 if it
+	// stands alone or has not been checked.
+	ThreadLength int `json:"threadLength"`
 }
 
 type ListResult struct {
@@ -229,13 +240,16 @@ func (s *Store) List(q Query) (ListResult, error) {
 	} else {
 		where = append(where, "b.removed_at IS NULL")
 	}
+	// Words match the post itself or, failing that, the rest of its thread.
+	const matches = `(t.rowid IN (SELECT rowid FROM tweets_fts WHERE tweets_fts MATCH ?)
+		OR t.rowid IN (SELECT rowid FROM threads_fts WHERE threads_fts MATCH ?))`
 	if m := ftsTerms(srch.words); m != "" {
-		where = append(where, "t.rowid IN (SELECT rowid FROM tweets_fts WHERE tweets_fts MATCH ?)")
-		args = append(args, m)
+		where = append(where, matches)
+		args = append(args, m, m)
 	}
 	for _, w := range srch.notWords {
-		where = append(where, "t.rowid NOT IN (SELECT rowid FROM tweets_fts WHERE tweets_fts MATCH ?)")
-		args = append(args, ftsTerms([]string{w}))
+		where = append(where, "NOT "+matches)
+		args = append(args, ftsTerms([]string{w}), ftsTerms([]string{w}))
 	}
 	where = append(where, srch.clauses...)
 	args = append(args, srch.args...)
@@ -267,7 +281,8 @@ func (s *Store) List(q Query) (ListResult, error) {
 func (s *Store) selectBookmarks(cond string, args []any, tail string, tailArgs ...any) ([]Bookmark, error) {
 	rows, err := s.db.Query(`
 		SELECT t.data, b.note, b.first_seen_at, b.removed_at, b.opened_at, b.aside_at,
-			(SELECT group_concat(collection_id) FROM collection_items ci WHERE ci.tweet_id = b.tweet_id)
+			(SELECT group_concat(collection_id) FROM collection_items ci WHERE ci.tweet_id = b.tweet_id),
+			coalesce((SELECT length FROM threads th WHERE th.tweet_id = b.tweet_id), 0)
 		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id WHERE `+cond+` `+tail,
 		append(append([]any{}, args...), tailArgs...)...)
 	if err != nil {
@@ -280,11 +295,12 @@ func (s *Store) selectBookmarks(cond string, args []any, tail string, tailArgs .
 		var firstSeen int64
 		var removed, opened, aside sql.NullInt64
 		var cols sql.NullString
-		if err := rows.Scan(&data, &note, &firstSeen, &removed, &opened, &aside, &cols); err != nil {
+		var threadLength int
+		if err := rows.Scan(&data, &note, &firstSeen, &removed, &opened, &aside, &cols, &threadLength); err != nil {
 			return nil, err
 		}
 		b := Bookmark{Note: note, FirstSeenAt: time.UnixMilli(firstSeen), Collections: []int64{},
-			RemovedAt: optTime(removed), OpenedAt: optTime(opened), AsideAt: optTime(aside)}
+			RemovedAt: optTime(removed), OpenedAt: optTime(opened), AsideAt: optTime(aside), ThreadLength: threadLength}
 		if err := json.Unmarshal([]byte(data), &b.Tweet); err != nil {
 			return nil, err
 		}

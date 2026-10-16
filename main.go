@@ -22,6 +22,10 @@ import (
 // SyncProgress reports each stage of a sync to the page.
 var SyncProgress = mygo.NewEvent[xsync.Progress]("syncProgress")
 
+// ThreadsFound reports how many threads a background pass found, so the page
+// can show them.
+var ThreadsFound = mygo.NewEvent[int]("threadsFound")
+
 // Library is the bookmark library as the frontend sees it.
 type Library struct {
 	mu      sync.Mutex
@@ -30,6 +34,8 @@ type Library struct {
 	syncing bool
 	media   *media.Cache
 	caching sync.Mutex
+	// threading serialises thread capture, which shares one hidden page.
+	threading sync.Mutex
 }
 
 func (l *Library) store() (*store.Store, error) {
@@ -206,6 +212,82 @@ func (l *Library) cacheMedia() {
 	}
 }
 
+// Thread returns the posts in a bookmark's thread, in reading order, or
+// none if it stands alone or has not been checked.
+func (l *Library) Thread(tweetID string) ([]xparse.Tweet, error) {
+	s, err := l.store()
+	if err != nil {
+		return nil, err
+	}
+	return s.Thread(tweetID)
+}
+
+// LoadThread reads a bookmark's thread from X now and returns it.
+func (l *Library) LoadThread(tweetID, url string) ([]xparse.Tweet, error) {
+	s, err := l.store()
+	if err != nil {
+		return nil, err
+	}
+	l.threading.Lock()
+	defer l.threading.Unlock()
+	page := openSyncPage(l.main, "about:blank")
+	defer page.Close()
+	posts, err := xsync.Thread(context.Background(), page, store.ThreadCandidate{ID: tweetID, URL: url}, 0)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.SaveThread(tweetID, posts, time.Now()); err != nil {
+		return nil, err
+	}
+	if posts == nil {
+		posts = []xparse.Tweet{}
+	}
+	return posts, nil
+}
+
+// captureThreads checks bookmarks that look like part of a thread and keeps
+// the threads they belong to. It works through a batch at a gentle pace and
+// stops if X is signed out.
+func (l *Library) captureThreads() {
+	s, err := l.store()
+	if err != nil {
+		return
+	}
+	l.threading.Lock()
+	defer l.threading.Unlock()
+	cands, err := s.ThreadCandidates(200)
+	if err != nil || len(cands) == 0 {
+		return
+	}
+	page := openSyncPage(l.main, "about:blank")
+	defer page.Close()
+	found := 0
+	for _, c := range cands {
+		posts, err := xsync.Thread(context.Background(), page, c, 0)
+		if errors.Is(err, xsync.ErrSignedOut) {
+			log.Printf("threads: X is signed out; stopping")
+			break
+		}
+		if err != nil {
+			log.Printf("threads: %s: %v", c.ID, err)
+			continue
+		}
+		if err := s.SaveThread(c.ID, posts, time.Now()); err != nil {
+			log.Printf("threads: %v", err)
+			return
+		}
+		if posts != nil {
+			found++
+		}
+		time.Sleep(1500 * time.Millisecond)
+	}
+	log.Printf("threads: checked %d posts, %d threads", len(cands), found)
+	if found > 0 {
+		ThreadsFound.Broadcast(found)
+		go l.cacheMedia()
+	}
+}
+
 // Sync starts bringing the library up to date with X and returns at once;
 // SyncProgress reports how it goes. A full sync reads every bookmark and
 // marks the ones gone from X as removed.
@@ -228,7 +310,7 @@ func (l *Library) Sync(full bool) error {
 			l.syncing = false
 			l.mu.Unlock()
 		}()
-		page := openSyncPage(l.main)
+		page := openSyncPage(l.main, xsync.BookmarksURL)
 		defer page.Close()
 		_, err := xsync.Run(context.Background(), page, s, xsync.Options{
 			Full: full,
@@ -240,6 +322,7 @@ func (l *Library) Sync(full bool) error {
 		if err != nil {
 			log.Printf("sync: %v", err)
 		}
+		go l.captureThreads()
 		l.cacheMedia()
 	}()
 	return nil
@@ -312,6 +395,7 @@ func main() {
 			log.Fatalf("media: %v", err)
 		}
 		go library.cacheMedia()
+		go library.captureThreads()
 		library.main = mygo.NewWindow(mygo.WindowOptions{
 			Title:           "roost",
 			Width:           1240,

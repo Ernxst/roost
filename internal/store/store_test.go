@@ -263,3 +263,40 @@ func TestSettingsAndMediaURLs(t *testing.T) {
 		t.Errorf("with videos = %v", urls)
 	}
 }
+
+func TestThreads(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	s.Ingest([]xparse.Entry{
+		entry("1", 10, "how shaders work 🧵", false),
+		entry("2", 20, "a lone post", false),
+	}, now)
+	cands, err := s.ThreadCandidates(10)
+	if err != nil || len(cands) != 1 || cands[0].ID != "1" {
+		t.Fatalf("candidates = %+v, %v", cands, err)
+	}
+	posts := []xparse.Tweet{{ID: "1", Text: "how shaders work 🧵"}, {ID: "9", Text: "first, the rasteriser"}}
+	if err := s.SaveThread("1", posts, now); err != nil {
+		t.Fatal(err)
+	}
+	if cands, _ := s.ThreadCandidates(10); len(cands) != 0 {
+		t.Errorf("checked post is still a candidate: %+v", cands)
+	}
+	if got := ids(t, s, Query{Search: "rasteriser"}); !equal(got, []string{"1"}) {
+		t.Errorf("search in thread = %v", got)
+	}
+	if got := ids(t, s, Query{Search: "has:thread"}); !equal(got, []string{"1"}) {
+		t.Errorf("has:thread = %v", got)
+	}
+	res, _ := s.List(Query{Search: "shaders"})
+	if res.Items[0].ThreadLength != 2 {
+		t.Errorf("thread length = %d", res.Items[0].ThreadLength)
+	}
+	if got, _ := s.Thread("1"); len(got) != 2 {
+		t.Errorf("thread = %+v", got)
+	}
+}

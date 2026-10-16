@@ -32,6 +32,8 @@ type Tweet struct {
 	Media        []Media   `json:"media"`
 	Links        []Link    `json:"links"`
 	Quoted       *Tweet    `json:"quoted,omitempty"`
+	// ReplyTo is the ID of the post this one replies to.
+	ReplyTo string `json:"replyTo,omitempty"`
 	// Raw is X's own object for the post, kept so later versions of the
 	// parser can read fields this one ignores.
 	Raw json.RawMessage `json:"-"`
@@ -106,6 +108,7 @@ func parseTweet(node any) (Tweet, bool) {
 		AuthorName:   first(str(dig(user, "core", "name")), str(dig(user, "legacy", "name"))),
 		AuthorAvatar: first(str(dig(user, "avatar", "image_url")), str(dig(user, "legacy", "profile_image_url_https"))),
 		Text:         str(legacy["full_text"]),
+		ReplyTo:      str(legacy["in_reply_to_status_id_str"]),
 	}
 	t.CreatedAt, _ = time.Parse(time.RubyDate, str(legacy["created_at"]))
 

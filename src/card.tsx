@@ -42,6 +42,7 @@ export function Card({ b }: { b: Bookmark }) {
         </span>
         <time dateTime={t.createdAt}>{shortDate(t.createdAt)}</time>
       </header>
+      {b.threadLength > 1 && <span class="thread-tag">thread · {b.threadLength} posts</span>}
       <button class="open" onClick={() => ((opened.value = t.id), (cursor.value = t.id))}>
         <span class="sr-only">Open post by {t.authorName}</span>
       </button>
