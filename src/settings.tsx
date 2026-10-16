@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { useRef } from "preact/hooks";
 import { Library, type MediaUsage, type Result, type Settings } from "./mygo";
-import { announce, fail } from "./state";
+import { announce, count, fail } from "./state";
 
 const size = (bytes: number) =>
   bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : bytes < 1e9 ? `${(bytes / 1e6).toFixed(0)} MB` : `${(bytes / 1e9).toFixed(1)} GB`;
@@ -30,7 +30,7 @@ export function SettingsButton() {
       if (res.dir) {
         exported.value = res;
         settings.value = await Library.settings();
-        announce(`Exported ${res.notes} notes`);
+        announce(`Exported ${count(res.notes, "note")}`);
       }
     } catch (err) {
       fail(err);
@@ -126,7 +126,7 @@ export function SettingsButton() {
                     {exporting.value
                       ? "Writing notes…"
                       : exported.value
-                        ? `Wrote ${exported.value.notes} notes and ${exported.value.media} images to `
+                        ? `Wrote ${count(exported.value.notes, "note")} and ${count(exported.value.media, "image")} to `
                         : "Last exported to "}
                     {!exporting.value && (
                       <button class="path" onClick={() => Library.reveal(exported.value?.dir ?? `${s.exportDir}/roost`)}>

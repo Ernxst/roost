@@ -3,7 +3,7 @@ import { useEffect } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { Stamps } from "./card";
 import { Library, type Bookmark, type Duplicates, type Media } from "./mygo";
-import { fail, openPost, stats } from "./state";
+import { count, fail, openPost, stats } from "./state";
 import { Avatar, cached, shortDate } from "./tweet";
 
 type Kind = "all" | "photo" | "video" | "animated_gif";
@@ -35,7 +35,7 @@ export function WallView() {
     <section class="wall-view" aria-labelledby="feed-title">
       <div class="feed-head">
         <h1 id="feed-title">Media wall</h1>
-        <span class="feed-count">{marks ? `${tiles.length} ${tiles.length === 1 ? "piece" : "pieces"}` : "…"}</span>
+        <span class="feed-count">{marks ? count(tiles.length, "piece") : "Loading…"}</span>
         <div class="wall-kinds" role="group" aria-label="Show">
           {kinds.map(([k, label]) => (
             <button key={k} class="chip" aria-pressed={kind.value === k} onClick={() => (kind.value = k)}>
@@ -99,7 +99,7 @@ export function DuplicatesView() {
     <section class="dupes-view" aria-labelledby="feed-title">
       <div class="feed-head">
         <h1 id="feed-title">Duplicates</h1>
-        <span class="feed-count">{groups ? `${groups.length} ${groups.length === 1 ? "set" : "sets"}` : "…"}</span>
+        <span class="feed-count">{groups ? count(groups.length, "set") : "Loading…"}</span>
       </div>
       {groups && groups.length === 0 ? (
         <p class="empty">No two bookmarks point at the same thing.</p>

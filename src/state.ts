@@ -54,6 +54,11 @@ export function dismissNotice() {
   notice.value = { ...notice.value, shown: false };
 }
 
+/** A number and the noun it counts, such as "1 note" or "1,204 notes". */
+export function count(n: number, one: string, many = `${one}s`) {
+  return `${n.toLocaleString()} ${n === 1 ? one : many}`;
+}
+
 /** An error from Go or the page, as a sentence. */
 export function errorText(err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
@@ -368,7 +373,7 @@ events.syncProgress.on((p) => {
 
 events.threadsFound.on((n) => {
   reload();
-  announce(`Found ${n} ${n === 1 ? "thread" : "threads"} among your bookmarks`);
+  announce(`Found ${count(n, "thread")} among your bookmarks`);
 });
 
 refreshMeta();

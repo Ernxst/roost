@@ -7,6 +7,7 @@ import {
   announcement,
   authors,
   collections,
+  count,
   createCollection,
   cursor,
   dismissNotice,
@@ -314,7 +315,7 @@ function Toolbar() {
               input.current?.blur();
             }
           }}
-          placeholder={`Search ${stats.value?.total.toLocaleString() ?? ""} kept posts`}
+          placeholder={stats.value ? `Search ${count(stats.value.total, "kept post")}` : "Search kept posts"}
           autoComplete="off"
           spellcheck={false}
           aria-describedby="search-hints"
@@ -503,17 +504,16 @@ function Feed() {
   });
 
   const v = view.value;
-  const count = total.value;
   return (
     <section class="feed" aria-labelledby="feed-title">
       <div class="feed-head">
         <h1 id="feed-title">{viewTitle(v)}</h1>
         <span class="feed-count">
-          {loading.value && items.value.length === 0 ? "…" : `${count.toLocaleString()} ${count === 1 ? "post" : "posts"}`}
+          {loading.value && items.value.length === 0 ? "Loading…" : count(total.value, "post")}
           {search.value && ` matching “${search.value}”`}
         </span>
       </div>
-      {!loading.value && count === 0 && <Empty />}
+      {!loading.value && total.value === 0 && <Empty />}
       <div class="columns" ref={desk}>
         {columns.value.map((col, i) => (
           <div class="column" key={i}>
@@ -536,7 +536,7 @@ function Empty() {
   async function importFile() {
     try {
       const n = await Library.import();
-      if (n) announce(`Imported ${n} bookmarks`);
+      if (n) announce(`Imported ${count(n, "bookmark")}`);
       reload();
       refreshMeta();
     } catch (err) {
