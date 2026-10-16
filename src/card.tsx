@@ -1,3 +1,5 @@
+import { useComputed } from "@preact/signals";
+import { Component } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import type { Bookmark, Collection } from "./mygo";
 import { collections, cursor, opened } from "./state";
@@ -21,10 +23,25 @@ export function Stamps({ b }: { b: Bookmark }) {
   );
 }
 
-export function Card({ b }: { b: Bookmark }) {
+/**
+ * A feed card that re-renders only when its bookmark changes. With a thousand
+ * cards on the desk, the feed re-rendering for a page load or a keypress
+ * leaves every unchanged card alone.
+ */
+export class Card extends Component<{ b: Bookmark }> {
+  shouldComponentUpdate(next: { b: Bookmark }) {
+    return next.b !== this.props.b;
+  }
+  render() {
+    return <CardBody b={this.props.b} />;
+  }
+}
+
+function CardBody({ b }: { b: Bookmark }) {
   const t = b.tweet;
   const ref = useRef<HTMLElement>(null);
-  const active = cursor.value === t.id;
+  // Watches only whether this card holds the cursor, so moving it re-renders two cards.
+  const active = useComputed(() => cursor.value === t.id).value;
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [active]);

@@ -1,4 +1,5 @@
 import type { JSX } from "preact";
+import { useState } from "preact/hooks";
 import { Library, type Media, type Tweet } from "./mygo";
 
 const entities: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
@@ -44,16 +45,23 @@ export function Text({ tweet }: { tweet: Tweet }) {
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
 
+// A minute of clock skew still reads as recent; anything later shows its date.
+const SKEW = 6e4;
+
 export function shortDate(iso: string) {
   const d = new Date(iso);
-  const hours = (Date.now() - d.getTime()) / 36e5;
+  const ago = Date.now() - d.getTime();
+  if (ago < -SKEW) return dayFormat.format(d);
+  const hours = ago / 36e5;
   if (hours < 1) return `${Math.max(1, Math.round(hours * 60))}m`;
   if (hours < 24) return `${Math.round(hours)}h`;
   return dayFormat.format(d);
 }
 
 export function relative(iso: string) {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 6e4);
+  const ago = Date.now() - new Date(iso).getTime();
+  if (ago < -SKEW) return dayFormat.format(new Date(iso));
+  const mins = Math.round(ago / 6e4);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins} min ago`;
   const hours = Math.round(mins / 60);
@@ -65,8 +73,20 @@ export function relative(iso: string) {
 export const cached = (url: string) => `roost-media://localhost/?u=${encodeURIComponent(url)}`;
 
 export function Avatar({ src, size = 28 }: { src: string; size?: number }) {
-  if (!src) return <span class="avatar blank" style={{ width: size, height: size }} aria-hidden="true" />;
-  return <img class="avatar" src={cached(src)} width={size} height={size} alt="" loading="lazy" />;
+  // Remembers which address failed, so a new author's avatar gets its own try.
+  const [failed, setFailed] = useState("");
+  if (!src || failed === src) return <span class="avatar blank" style={{ width: size, height: size }} aria-hidden="true" />;
+  return <img class="avatar" src={cached(src)} width={size} height={size} alt="" loading="lazy" onError={() => setFailed(src)} />;
+}
+
+/**
+ * The shape a lone photo or video is framed at: its own, kept between portrait
+ * 3:4 and 2:1 so panoramas and tall screenshots stay readable. Cards crop to
+ * the frame; the detail sheet letterboxes inside it to show the whole image.
+ */
+export function previewRatio(m: Media): number | undefined {
+  if (!m.width || !m.height) return undefined;
+  return Math.min(Math.max(m.width / m.height, 0.75), 2);
 }
 
 /** Media laid out as X does: one item at its own shape, more in a grid. */
@@ -76,7 +96,7 @@ export function MediaGrid({ media, playable = false }: { media: Media[]; playabl
   return (
     <div class={`media n${Math.min(media.length, 4)}`}>
       {media.slice(0, 4).map((m) => {
-        const ratio = single && m.width && m.height ? Math.max(m.width / m.height, 0.75) : undefined;
+        const ratio = single ? previewRatio(m) : undefined;
         const style = ratio ? { aspectRatio: String(ratio) } : undefined;
         if (playable && m.video) {
           return (

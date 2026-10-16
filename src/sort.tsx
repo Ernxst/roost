@@ -112,7 +112,7 @@ export function SortMode() {
       <div class="feed-head">
         <h1 id="feed-title">Sorting</h1>
         <span class="feed-count">
-          {left} left to sort{filed ? ` · ${filed} filed this sitting` : ""}
+          {left.toLocaleString()} left to sort{filed ? ` · ${filed.toLocaleString()} filed this sitting` : ""}
         </span>
       </div>
       {!current ? (

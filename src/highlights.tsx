@@ -135,7 +135,7 @@ export function HighlightsView() {
       <div class="feed-head">
         <h1 id="feed-title">Highlights</h1>
         <span class="feed-count">
-          {list.length} {list.length === 1 ? "passage" : "passages"}
+          {list.length.toLocaleString()} {list.length === 1 ? "passage" : "passages"}
         </span>
       </div>
       {list.length === 0 ? (

@@ -11,10 +11,10 @@ import (
 func TestNormaliseURL(t *testing.T) {
 	for in, want := range map[string]string{
 		"https://www.example.com/a/?utm_source=x&id=2#top": "example.com/a?id=2",
-		"http://example.com/a":                              "example.com/a",
-		"https://youtu.be/abc?si=xyz":                       "youtube.com/watch?v=abc",
-		"https://example.com/":                              "example.com",
-		"not a url":                                         "",
+		"http://example.com/a":                             "example.com/a",
+		"https://youtu.be/abc?si=xyz":                      "youtube.com/watch?v=abc",
+		"https://example.com/":                             "example.com",
+		"not a url":                                        "",
 	} {
 		if got := NormaliseURL(in); got != want {
 			t.Errorf("NormaliseURL(%q) = %q, want %q", in, got, want)

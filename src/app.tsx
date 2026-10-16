@@ -1,7 +1,7 @@
 import { useComputed, useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { Library, type Bookmark, type Collection } from "./mygo";
-import { fixtureHref, fixtureMode, isFixtureMode, type FixtureMode } from "./fixtures";
+import { fixtureHref, fixtureMode, isFixtureMode, type FixtureMode } from "./fixture-mode";
 import {
   announce,
   announcement,
@@ -38,7 +38,7 @@ import { Thread } from "./thread";
 import { Links, Reader } from "./links";
 import { HighlightList, Highlighter, HighlightsView, usePostHighlights } from "./highlights";
 import { DuplicatesView, WallView } from "./wall";
-import { Avatar, MediaGrid, openExternal, Quoted, relative, Text } from "./tweet";
+import { Avatar, MediaGrid, openExternal, previewRatio, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -119,11 +119,11 @@ function RailItem({
         disabled={disabled}
         onClick={() => (view.value = target)}
         style={hue === undefined ? undefined : { "--hue": ink(hue) }}
-        title={smart ? `Smart collection: ${smart}` : undefined}
+        title={hue === undefined ? undefined : smart ? `${label}\nSmart collection: ${smart}` : label}
       >
         {hue !== undefined && <span class={smart ? "tab smart" : "tab"} aria-hidden="true" />}
         <span class="label">{label}</span>
-        {count !== undefined && <span class="count">{count}</span>}
+        {count !== undefined && <span class="count">{count.toLocaleString()}</span>}
       </button>
     </li>
   );
@@ -223,10 +223,11 @@ function Rail() {
                   aria-current={same(view.value, { kind: "author", handle: a.handle }) ? "page" : undefined}
                   disabled={isFixtureMode}
                   onClick={() => (view.value = { kind: "author", handle: a.handle })}
+                  title={a.name || a.handle}
                 >
                   <Avatar src={a.avatar} size={18} />
                   <span class="label">{a.name || a.handle}</span>
-                  <span class="count">{a.count}</span>
+                  <span class="count">{a.count.toLocaleString()}</span>
                 </button>
               </li>
             ))}
@@ -247,7 +248,7 @@ function SyncStatus() {
     return (
       <span class="ticker live">
         <span class="pulse" aria-hidden="true" />
-        {p.phase === "loading" ? "Opening X…" : `Reading · ${p.seen} seen · ${p.added} new`}
+        {p.phase === "loading" ? "Opening X…" : `Reading · ${p.seen.toLocaleString()} seen · ${p.added.toLocaleString()} new`}
       </span>
     );
   }
@@ -256,8 +257,8 @@ function SyncStatus() {
   if (!last) return <span class="ticker">Never synced</span>;
   return (
     <span class="ticker" title={new Date(last.finishedAt).toLocaleString()}>
-      Synced {relative(last.finishedAt)} · {last.added} new
-      {last.removed ? ` · ${last.removed} gone` : ""}
+      Synced {relative(last.finishedAt)} · {last.added.toLocaleString()} new
+      {last.removed ? ` · ${last.removed.toLocaleString()} gone` : ""}
       {p?.phase === "done" && p.message ? ` · ${p.message}` : ""}
     </span>
   );
@@ -291,7 +292,7 @@ function Toolbar() {
               input.current?.blur();
             }
           }}
-          placeholder={`Search ${stats.value?.total ?? ""} kept posts`}
+          placeholder={`Search ${stats.value?.total.toLocaleString() ?? ""} kept posts`}
           autoComplete="off"
           spellcheck={false}
           aria-describedby="search-hints"
@@ -431,8 +432,10 @@ function estimate(b: Bookmark, width: number) {
   const lines = (s: string) => Math.ceil(s.length / (width / 8.4)) + (s.match(/\n/g)?.length ?? 0);
   let h = 96 + lines(t.text) * 23;
   const m = t.media[0];
-  if (m) h += t.media.length === 1 && m.width ? Math.min((width * m.height) / m.width, width * 1.33) : width * 0.6;
+  const ratio = m && t.media.length === 1 ? previewRatio(m) : undefined;
+  if (m) h += ratio ? Math.min(width / ratio, 520) : width * 0.6;
   if (t.quoted) h += 70 + lines(t.quoted.text) * 21 + (t.quoted.media.length ? width * 0.5 : 0);
+  if (b.note) h += 12 + Math.min(lines(b.note), 4) * 20;
   if (b.collections.length) h += 30;
   return h;
 }
@@ -475,7 +478,7 @@ function Feed() {
       <div class="feed-head">
         <h1 id="feed-title">{viewTitle(v)}</h1>
         <span class="feed-count">
-          {loading.value && items.value.length === 0 ? "…" : `${count} ${count === 1 ? "post" : "posts"}`}
+          {loading.value && items.value.length === 0 ? "…" : `${count.toLocaleString()} ${count === 1 ? "post" : "posts"}`}
           {search.value && ` matching “${search.value}”`}
         </span>
       </div>
@@ -580,14 +583,25 @@ function Sheet() {
           <span class="handle">@{t.authorHandle}</span>
         </span>
       </div>
-      <Highlighter tweetId={t.id} onAdd={hl.add}>
-        {t.text && <Text tweet={t} />}
-        <MediaGrid media={t.media} playable />
-        {t.quoted && <Quoted tweet={t.quoted} />}
-        <Thread b={b} />
-      </Highlighter>
-      <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} />
-      <Links b={b} onRead={(url) => (reading.value = url)} />
+      {isFixtureMode ? (
+        <>
+          {t.text && <Text tweet={t} />}
+          <MediaGrid media={t.media} playable />
+          {t.quoted && <Quoted tweet={t.quoted} />}
+          <Thread b={b} />
+        </>
+      ) : (
+        <>
+          <Highlighter tweetId={t.id} onAdd={hl.add}>
+            {t.text && <Text tweet={t} />}
+            <MediaGrid media={t.media} playable />
+            {t.quoted && <Quoted tweet={t.quoted} />}
+            <Thread b={b} />
+          </Highlighter>
+          <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} />
+          <Links b={b} onRead={(url) => (reading.value = url)} />
+        </>
+      )}
       <p class="meta">
         Posted <time dateTime={t.createdAt}>{new Date(t.createdAt).toLocaleString()}</time>
         <br />

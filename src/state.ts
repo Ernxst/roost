@@ -1,5 +1,6 @@
 import { batch, effect, signal } from "@preact/signals";
 import { events, Library, type Author, type Bookmark, type Collection, type Progress, type Highlight, type Query, type Revisit, type Stats } from "./mygo";
+import { fixtureMode, isFixtureMode } from "./fixture-mode";
 
 export type View =
   | { kind: "all" }
@@ -54,6 +55,11 @@ function query(offset: number): Query {
 }
 
 let generation = 0;
+let fixtureData: Promise<typeof import("./fixtures")> | undefined;
+
+function loadFixtureData() {
+  return (fixtureData ??= import("./fixtures"));
+}
 
 export async function reload() {
   if (view.value.kind === "revisit") return loadRevisit();
@@ -62,6 +68,22 @@ export async function reload() {
   if (view.value.kind === "wall" || view.value.kind === "duplicates") return;
   const g = ++generation;
   loading.value = true;
+  if (import.meta.env.DEV && isFixtureMode) {
+    try {
+      const { fixtureList } = await loadFixtureData();
+      const res = fixtureList(0, fixtureMode === "thousand" ? 1000 : PAGE);
+      if (g !== generation) return;
+      batch(() => {
+        items.value = res.items;
+        total.value = res.total;
+      });
+    } catch (err) {
+      announce(String(err));
+    } finally {
+      if (g === generation) loading.value = false;
+    }
+    return;
+  }
   try {
     const res = await Library.list(query(0));
     if (g !== generation) return;
@@ -80,6 +102,22 @@ export async function loadMore() {
   if (loading.value || items.value.length >= total.value) return;
   const g = generation;
   loading.value = true;
+  if (import.meta.env.DEV && isFixtureMode) {
+    try {
+      const { fixtureList } = await loadFixtureData();
+      const res = fixtureList(items.value.length, PAGE);
+      if (g !== generation) return;
+      batch(() => {
+        items.value = [...items.value, ...res.items];
+        total.value = res.total;
+      });
+    } catch (err) {
+      announce(String(err));
+    } finally {
+      if (g === generation) loading.value = false;
+    }
+    return;
+  }
   try {
     const res = await Library.list(query(items.value.length));
     if (g !== generation) return;
@@ -94,6 +132,20 @@ export async function loadMore() {
 }
 
 export async function refreshMeta() {
+  if (import.meta.env.DEV && isFixtureMode) {
+    try {
+      const { fixtureMeta } = await loadFixtureData();
+      const meta = fixtureMeta();
+      batch(() => {
+        stats.value = meta.stats;
+        collections.value = meta.collections;
+        authors.value = meta.authors;
+      });
+    } catch (err) {
+      announce(String(err));
+    }
+    return;
+  }
   const [s, c, a] = await Promise.all([Library.stats(), Library.collections(), Library.authors(8)]);
   batch(() => {
     stats.value = s;
@@ -122,6 +174,10 @@ effect(() => {
 export const revisit = signal<Revisit | null>(null);
 
 export async function loadRevisit() {
+  if (isFixtureMode) {
+    revisit.value = { onThisDay: [], unopened: [], random: [] };
+    return;
+  }
   try {
     revisit.value = await Library.revisit(6);
   } catch (err) {
@@ -178,12 +234,14 @@ function patch(id: string, fn: (b: Bookmark) => Bookmark) {
 }
 
 export function markOpened(b: Bookmark) {
+  if (isFixtureMode) return;
   if (b.openedAt) return;
   patch(b.tweet.id, (x) => ({ ...x, openedAt: new Date().toISOString() }));
   Library.markOpened(b.tweet.id).catch((err) => announce(String(err)));
 }
 
 export async function setAside(b: Bookmark, aside: boolean) {
+  if (isFixtureMode) return;
   patch(b.tweet.id, (x) => ({ ...x, asideAt: aside ? new Date().toISOString() : null }));
   await Library.setAside(b.tweet.id, aside);
   refreshMeta();
@@ -191,6 +249,7 @@ export async function setAside(b: Bookmark, aside: boolean) {
 
 /** Files a post into a collection, or takes it out, without the toggle's guesswork. */
 export async function file(b: Bookmark, collectionID: number, inside: boolean) {
+  if (isFixtureMode) return;
   patch(b.tweet.id, (x) => ({
     ...x,
     collections: inside
@@ -202,6 +261,7 @@ export async function file(b: Bookmark, collectionID: number, inside: boolean) {
 }
 
 export async function toggleCollection(b: Bookmark, collectionID: number) {
+  if (isFixtureMode) return;
   const inside = !b.collections.includes(collectionID);
   patch(b.tweet.id, (x) => ({
     ...x,
@@ -219,6 +279,7 @@ export async function toggleCollection(b: Bookmark, collectionID: number) {
 }
 
 export async function saveNote(b: Bookmark, note: string) {
+  if (isFixtureMode) return;
   if (note.trim() === b.note) return;
   patch(b.tweet.id, (x) => ({ ...x, note: note.trim() }));
   await Library.setNote(b.tweet.id, note);
@@ -232,6 +293,7 @@ const HUES = [28, 145, 250, 75, 320, 195, 5, 110, 280, 50];
 export const manual = () => collections.value.filter((c) => !c.query);
 
 export async function createCollection(name: string, query = "") {
+  if (isFixtureMode) throw new Error("Collections are read-only in fixture mode");
   const hue = HUES[collections.value.length % HUES.length] ?? 28;
   const c = await Library.createCollection(name, hue, query);
   await refreshMeta();
@@ -240,6 +302,7 @@ export async function createCollection(name: string, query = "") {
 }
 
 export async function startSync(full: boolean) {
+  if (isFixtureMode) return;
   try {
     progress.value = { phase: "loading", full, seen: 0, added: 0, removed: 0, message: "" };
     await Library.sync(full);
