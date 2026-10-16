@@ -43,7 +43,7 @@ import { Links, Reader } from "./links";
 import { HighlightList, Highlighter, HighlightsView, usePostHighlights } from "./highlights";
 import { DuplicatesView, WallView } from "./wall";
 import { WhatsNew } from "./changelog";
-import { Avatar, MediaGrid, openExternal, previewRatio, Quoted, relative, Text } from "./tweet";
+import { Avatar, longDate, longDay, MediaGrid, openExternal, previewRatio, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -278,7 +278,7 @@ function SyncStatus() {
   if (p?.phase === "failed") return <span class="ticker failed">Sync failed: {p.message}</span>;
   if (!last) return <span class="ticker">Never synced</span>;
   return (
-    <span class="ticker" title={new Date(last.finishedAt).toLocaleString()}>
+    <span class="ticker" title={longDate(last.finishedAt)}>
       Synced {relative(last.finishedAt)} · {last.added.toLocaleString()} new
       {last.removed ? ` · ${last.removed.toLocaleString()} gone` : ""}
       {p?.phase === "done" && p.message ? ` · ${p.message}` : ""}
@@ -634,13 +634,13 @@ function Sheet() {
         </>
       )}
       <p class="meta">
-        Posted <time dateTime={t.createdAt}>{new Date(t.createdAt).toLocaleString()}</time>
+        Posted <time dateTime={t.createdAt}>{longDate(t.createdAt)}</time>
         <br />
-        In roost since <time dateTime={b.firstSeenAt}>{new Date(b.firstSeenAt).toLocaleDateString()}</time>
+        In roost since <time dateTime={b.firstSeenAt}>{longDay(b.firstSeenAt)}</time>
         {b.removedAt && (
           <>
             <br />
-            Gone from X since <time dateTime={b.removedAt}>{new Date(b.removedAt).toLocaleDateString()}</time>
+            Gone from X since <time dateTime={b.removedAt}>{longDay(b.removedAt)}</time>
           </>
         )}
       </p>

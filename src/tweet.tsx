@@ -48,6 +48,13 @@ export function Text({ tweet }: { tweet: Tweet }) {
 }
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
+const longDayFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "long" });
+const longFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeStyle: "short" });
+
+/** A date written out, such as 14 October 2026. */
+export const longDay = (iso: string) => longDayFormat.format(new Date(iso));
+/** A date and time written out, such as 14 October 2026 at 09:30. */
+export const longDate = (iso: string) => longFormat.format(new Date(iso));
 
 // A minute of clock skew still reads as recent; anything later shows its date.
 const SKEW = 6e4;
