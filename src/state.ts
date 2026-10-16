@@ -1,5 +1,5 @@
 import { batch, effect, signal } from "@preact/signals";
-import { events, Library, type Author, type Bookmark, type Collection, type Progress, type Query, type Revisit, type Stats } from "./mygo";
+import { events, Library, type Author, type Bookmark, type Collection, type Progress, type Highlight, type Query, type Revisit, type Stats } from "./mygo";
 
 export type View =
   | { kind: "all" }
@@ -8,7 +8,8 @@ export type View =
   | { kind: "collection"; id: number }
   | { kind: "author"; handle: string }
   | { kind: "sort" }
-  | { kind: "revisit" };
+  | { kind: "revisit" }
+  | { kind: "highlights" };
 
 const PAGE = 60;
 
@@ -54,6 +55,7 @@ let generation = 0;
 
 export async function reload() {
   if (view.value.kind === "revisit") return loadRevisit();
+  if (view.value.kind === "highlights") return loadHighlights();
   const g = ++generation;
   loading.value = true;
   try {
@@ -123,11 +125,38 @@ export async function loadRevisit() {
   }
 }
 
+/** Bookmarks opened from outside the feed, such as from a highlight. */
+const extra = signal<Bookmark[]>([]);
+
+/** Opens a post in the sheet, loading it first if no list holds it. */
+export async function openPost(id: string) {
+  if (!find(id)) {
+    try {
+      const b = await Library.get(id);
+      extra.value = [...extra.value.filter((x) => x.tweet.id !== id), b];
+    } catch (err) {
+      announce(String(err));
+      return;
+    }
+  }
+  opened.value = id;
+}
+
+export const highlights = signal<Highlight[]>([]);
+
+export async function loadHighlights() {
+  try {
+    highlights.value = await Library.allHighlights();
+  } catch (err) {
+    announce(String(err));
+  }
+}
+
 /** Finds a loaded bookmark, whether it is in the feed or on a Revisit shelf. */
 export function find(id: string | null): Bookmark | undefined {
   if (!id) return undefined;
   const r = revisit.value;
-  const all = [items.value, r?.onThisDay ?? [], r?.unopened ?? [], r?.random ?? []];
+  const all = [items.value, r?.onThisDay ?? [], r?.unopened ?? [], r?.random ?? [], extra.value];
   for (const list of all) {
     const b = list.find((x) => x.tweet.id === id);
     if (b) return b;
@@ -138,6 +167,7 @@ function patch(id: string, fn: (b: Bookmark) => Bookmark) {
   const each = (list: Bookmark[]) => list.map((b) => (b.tweet.id === id ? fn(b) : b));
   batch(() => {
     items.value = each(items.value);
+    extra.value = each(extra.value);
     const r = revisit.value;
     if (r) revisit.value = { onThisDay: each(r.onThisDay), unopened: each(r.unopened), random: each(r.random) };
   });

@@ -345,6 +345,50 @@ func (l *Library) saveLinks() {
 	log.Printf("links: saved %d pages", len(urls))
 }
 
+// AddHighlight keeps a passage from a post, or from a page it links to when
+// source is that page's URL.
+func (l *Library) AddHighlight(tweetID, source, quote string) (store.Highlight, error) {
+	s, err := l.store()
+	if err != nil {
+		return store.Highlight{}, err
+	}
+	return s.AddHighlight(tweetID, source, quote, time.Now())
+}
+
+func (l *Library) DeleteHighlight(id int64) error {
+	s, err := l.store()
+	if err != nil {
+		return err
+	}
+	return s.DeleteHighlight(id)
+}
+
+func (l *Library) Highlights(tweetID string) ([]store.Highlight, error) {
+	s, err := l.store()
+	if err != nil {
+		return nil, err
+	}
+	return s.Highlights(tweetID)
+}
+
+// Get returns one bookmark.
+func (l *Library) Get(tweetID string) (store.Bookmark, error) {
+	s, err := l.store()
+	if err != nil {
+		return store.Bookmark{}, err
+	}
+	return s.Get(tweetID)
+}
+
+// AllHighlights lists every highlight with its post, newest first.
+func (l *Library) AllHighlights() ([]store.Highlight, error) {
+	s, err := l.store()
+	if err != nil {
+		return nil, err
+	}
+	return s.AllHighlights()
+}
+
 // Sync starts bringing the library up to date with X and returns at once;
 // SyncProgress reports how it goes. A full sync reads every bookmark and
 // marks the ones gone from X as removed.

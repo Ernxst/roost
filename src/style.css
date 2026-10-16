@@ -509,7 +509,7 @@ kbd {
 .press.link { margin-bottom: 8px; }
 
 .file-under { border: 0; margin: 26px 0 0; padding: 0; }
-.file-under legend, .note .legend, .thread .legend, .links .legend {
+.file-under legend, .note .legend, .thread .legend, .links .legend, .highlight-list .legend {
   display: block;
   width: 100%;
   padding: 0;
@@ -781,3 +781,54 @@ kbd {
 .reader .byline-text { font: italic 15px var(--serif); color: var(--ink-2); margin: 0 0 22px; }
 .reader article p { margin: 0 0 1em; text-wrap: pretty; }
 .reader .press { margin-top: 12px; }
+
+/* ---- Highlights ---- */
+
+.highlightable { position: relative; }
+.highlightable ::selection { background: color-mix(in oklch, var(--accent) 28%, transparent); }
+mark { background: color-mix(in oklch, oklch(0.88 0.15 95) 70%, transparent); color: inherit; padding: 0 1px; border-radius: 2px; }
+.highlight-pop {
+  position: fixed;
+  z-index: 30;
+  translate: -50% calc(-100% - 8px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 20px -8px var(--shadow);
+}
+.highlight-pop kbd { color: inherit; border-color: currentColor; opacity: 0.7; }
+.highlight-list { margin: 22px 0 0; }
+.highlight-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.highlight-list li { position: relative; padding-right: 30px; }
+.highlight-list blockquote, .clipping blockquote {
+  margin: 0;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid oklch(0.82 0.15 95);
+  font: italic 16px/1.5 var(--serif);
+}
+.highlight-list .close { position: absolute; top: 0; right: 0; }
+.highlights-view { padding: 8px 28px 80px; }
+.clippings { list-style: none; margin: 0; padding: 0; columns: 2 340px; column-gap: 28px; }
+.clipping { break-inside: avoid; margin: 0 0 26px; }
+.clipping blockquote { font-size: 18px; }
+.clip-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0 12px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: 11.5px var(--mono);
+  color: var(--ink-2);
+}
+.clip-source time { color: var(--ink-3); }
+@media (hover: hover) { .clip-source:hover span { text-decoration: underline; } }

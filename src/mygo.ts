@@ -30,6 +30,15 @@ export interface Collection {
   count: number;
 }
 
+export interface Highlight {
+  id: number;
+  tweetId: string;
+  source: string;
+  quote: string;
+  createdAt: string;
+  tweet?: Tweet;
+}
+
 export interface Link {
   short: string;
   expanded: string;
@@ -145,6 +154,17 @@ export interface Tweet {
 
 /** Library is the bookmark library as the frontend sees it. */
 export const Library = {
+  /**
+   * AddHighlight keeps a passage from a post, or from a page it links to when
+   * source is that page's URL.
+   */
+  addHighlight(tweetID: string, source: string, quote: string): Promise<Highlight> {
+    return call("Library.AddHighlight", tweetID, source, quote);
+  },
+  /** AllHighlights lists every highlight with its post, newest first. */
+  allHighlights(): Promise<Highlight[]> {
+    return call("Library.AllHighlights");
+  },
   /** Authors lists the authors the user has bookmarked most. */
   authors(limit: number): Promise<Author[]> {
     return call("Library.Authors", limit);
@@ -162,6 +182,16 @@ export const Library = {
   },
   deleteCollection(id: number): Promise<void> {
     return call("Library.DeleteCollection", id);
+  },
+  deleteHighlight(id: number): Promise<void> {
+    return call("Library.DeleteHighlight", id);
+  },
+  /** Get returns one bookmark. */
+  get(tweetID: string): Promise<Bookmark> {
+    return call("Library.Get", tweetID);
+  },
+  highlights(tweetID: string): Promise<Highlight[]> {
+    return call("Library.Highlights", tweetID);
   },
   /**
    * Import adds bookmarks from a file of X's raw Bookmarks responses, a JSON

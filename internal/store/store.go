@@ -91,6 +91,15 @@ CREATE TABLE links (
 	page TEXT NOT NULL
 );
 CREATE VIRTUAL TABLE links_fts USING fts5(title, text, tokenize = 'unicode61 remove_diacritics 2');
+`, `
+CREATE TABLE highlights (
+	id INTEGER PRIMARY KEY,
+	tweet_id TEXT NOT NULL REFERENCES tweets(id),
+	source TEXT NOT NULL DEFAULT '',
+	quote TEXT NOT NULL,
+	created_at INTEGER NOT NULL
+);
+CREATE INDEX highlights_tweet ON highlights (tweet_id);
 `}
 
 // Open opens the library at path, creating and migrating it as needed.

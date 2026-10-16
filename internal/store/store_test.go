@@ -334,3 +334,32 @@ func TestLinks(t *testing.T) {
 		t.Errorf("links = %+v, %v", ls, err)
 	}
 }
+
+func TestHighlights(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	s.Ingest([]xparse.Entry{entry("1", 10, "shaders run per pixel", false), entry("2", 20, "b", false)}, now)
+	if _, err := s.AddHighlight("1", "", "   ", now); err == nil {
+		t.Error("empty highlight accepted")
+	}
+	h, err := s.AddHighlight("1", "", " run per pixel ", now)
+	if err != nil || h.Quote != "run per pixel" {
+		t.Fatalf("add = %+v, %v", h, err)
+	}
+	s.AddHighlight("1", "https://blog.example.com", "triangles", now.Add(time.Second))
+	if got := ids(t, s, Query{Search: "has:highlight"}); !equal(got, []string{"1"}) {
+		t.Errorf("has:highlight = %v", got)
+	}
+	all, _ := s.AllHighlights()
+	if len(all) != 2 || all[0].Quote != "triangles" || all[0].Tweet == nil || all[0].Tweet.ID != "1" {
+		t.Errorf("all = %+v", all)
+	}
+	s.DeleteHighlight(h.ID)
+	if hs, _ := s.Highlights("1"); len(hs) != 1 {
+		t.Errorf("after delete = %+v", hs)
+	}
+}

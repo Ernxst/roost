@@ -11,7 +11,7 @@ import (
 // quoted post, mixed with operators:
 //
 //	from:handle            posts by that author
-//	has:media|photo|video|gif|link|article|quote|note|thread
+//	has:media|photo|video|gif|link|article|quote|note|thread|highlight
 //	in:name, -in:name      in, or not in, a collection; in:none for none
 //	is:gone|opened|unopened|aside   removed on X, opened in roost or not,
 //	                       set aside while sorting
@@ -124,7 +124,8 @@ var hasClauses = map[string]string{
 	"note":  "b.note != ''",
 	"article": `EXISTS (SELECT 1 FROM json_each(t.data, '$.links') je JOIN links l ON l.url = json_extract(je.value, '$.expanded')
 		WHERE json_extract(l.page, '$.text') IS NOT NULL)`,
-	"thread": "EXISTS (SELECT 1 FROM threads th WHERE th.tweet_id = b.tweet_id AND th.length > 1)",
+	"highlight": "EXISTS (SELECT 1 FROM highlights h WHERE h.tweet_id = b.tweet_id)",
+	"thread":    "EXISTS (SELECT 1 FROM threads th WHERE th.tweet_id = b.tweet_id AND th.length > 1)",
 }
 
 // tokenize splits on spaces outside double quotes.

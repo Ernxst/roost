@@ -35,6 +35,7 @@ import { SettingsButton } from "./settings";
 import { SortMode } from "./sort";
 import { Thread } from "./thread";
 import { Links, Reader } from "./links";
+import { HighlightList, Highlighter, HighlightsView, usePostHighlights } from "./highlights";
 import { Avatar, MediaGrid, openExternal, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
@@ -49,7 +50,15 @@ export function App() {
       <Rail />
       <main class="desk" id="feed" tabIndex={-1}>
         <Toolbar />
-        {view.value.kind === "sort" ? <SortMode /> : view.value.kind === "revisit" ? <RevisitView /> : <Feed />}
+        {view.value.kind === "sort" ? (
+          <SortMode />
+        ) : view.value.kind === "revisit" ? (
+          <RevisitView />
+        ) : view.value.kind === "highlights" ? (
+          <HighlightsView />
+        ) : (
+          <Feed />
+        )}
       </main>
       <Sheet />
       <div class="sr-only" role="status" aria-live="polite">
@@ -150,6 +159,7 @@ function Rail() {
       <ul class="rail-list">
         <RailItem target={{ kind: "sort" }} label="Sort the unsorted" count={s?.toSort} disabled={isFixtureMode} />
         <RailItem target={{ kind: "revisit" }} label="Revisit" disabled={isFixtureMode} />
+        <RailItem target={{ kind: "highlights" }} label="Highlights" disabled={isFixtureMode} />
       </ul>
 
       <h2 class="rail-heading">Collections</h2>
@@ -393,6 +403,8 @@ function viewTitle(v: View): string {
       return "Sorting";
     case "revisit":
       return "Revisit";
+    case "highlights":
+      return "Highlights";
     case "author": {
       const a = authors.value.find((a) => a.handle === v.handle);
       return a?.name || `@${v.handle}`;
@@ -508,6 +520,7 @@ function Sheet() {
   const returnTo = useRef<HTMLElement | null>(null);
   const note = useSignal("");
   const reading = useSignal<string | null>(null);
+  const hl = usePostHighlights(b);
 
   useSignalEffect(() => {
     const o = opened.value;
@@ -529,7 +542,13 @@ function Sheet() {
   if (reading.value) {
     return (
       <aside class="sheet wide" ref={panel} tabIndex={-1} aria-label="Saved page">
-        <Reader url={reading.value} onClose={() => (reading.value = null)} />
+        <Reader
+          url={reading.value}
+          tweetId={t.id}
+          quotes={hl.list.value.filter((h) => h.source === reading.value).map((h) => h.quote)}
+          onAdd={hl.add}
+          onClose={() => (reading.value = null)}
+        />
       </aside>
     );
   }
@@ -548,10 +567,13 @@ function Sheet() {
           <span class="handle">@{t.authorHandle}</span>
         </span>
       </div>
-      {t.text && <Text tweet={t} />}
-      <MediaGrid media={t.media} playable />
-      {t.quoted && <Quoted tweet={t.quoted} />}
-      <Thread b={b} />
+      <Highlighter tweetId={t.id} onAdd={hl.add}>
+        {t.text && <Text tweet={t} />}
+        <MediaGrid media={t.media} playable />
+        {t.quoted && <Quoted tweet={t.quoted} />}
+        <Thread b={b} />
+      </Highlighter>
+      <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} />
       <Links b={b} onRead={(url) => (reading.value = url)} />
       <p class="meta">
         Posted <time dateTime={t.createdAt}>{new Date(t.createdAt).toLocaleString()}</time>
