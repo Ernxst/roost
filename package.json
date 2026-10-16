@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "mygo-runtime": "^0.5.5"
+    "@preact/signals": "^2.11.3",
+    "mygo-runtime": "^0.5.5",
+    "preact": "^11.0.1"
   },
   "devDependencies": {
     "mygo-cli": "^0.5.5",
