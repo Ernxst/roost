@@ -330,6 +330,42 @@ kbd {
   overflow-wrap: anywhere;
 }
 .feed-count { font: 12px var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.feed-head .edit { margin-inline-start: auto; align-self: center; }
+
+/* ---- Collection editor ---- */
+
+.collection-editor {
+  display: grid;
+  gap: 16px;
+  max-width: 520px;
+  margin: -8px 0 28px;
+  padding: 18px 20px 20px;
+  border-radius: 6px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--rule), 0 10px 22px -14px var(--shadow);
+}
+.collection-editor .field { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.collection-editor .field-label { margin: 0; padding: 0; }
+.collection-editor input:not([type="radio"]) {
+  width: 100%;
+  padding: 5px 2px;
+  border: 0;
+  border-bottom: 1.5px solid var(--ink);
+  background: transparent;
+  font-size: 16px;
+}
+.collection-editor .field-error { margin: 0; }
+.collection-editor .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.collection-editor .swatches legend { width: 100%; margin-bottom: 6px; }
+.swatch { position: relative; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; }
+.swatch::before { content: ""; width: 18px; height: 18px; border-radius: 50%; background: var(--hue); }
+.swatch input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.swatch:has(input:checked) { box-shadow: inset 0 0 0 2px var(--ink); }
+.swatch:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.collection-editor .row { align-items: center; }
+.collection-editor .delete { margin-inline-start: auto; }
+.collection-editor .confirm p { flex: 1 1 100%; margin: 0; font-size: 15px; }
+.press.danger { background: var(--accent); color: var(--card); }
 
 .columns { display: flex; align-items: flex-start; gap: 22px; }
 .column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 22px; }

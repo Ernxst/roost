@@ -326,7 +326,7 @@ export async function saveNote(b: Bookmark, note: string) {
 }
 
 // Hues for new collections, spaced so neighbours stay distinct.
-const HUES = [28, 145, 250, 75, 320, 195, 5, 110, 280, 50];
+export const HUES = [28, 145, 250, 75, 320, 195, 5, 110, 280, 50];
 
 /** Collections posts can be filed into, in sidebar order. */
 export const manual = () => collections.value.filter((c) => !c.query);
@@ -338,6 +338,21 @@ export async function createCollection(name: string, query = "") {
   await refreshMeta();
   announce(`Created ${c.name}`);
   return c;
+}
+
+export async function updateCollection(c: Collection) {
+  if (isFixtureMode) throw new Error("Collections are read-only in fixture mode");
+  await Library.updateCollection(c.id, c.name, c.hue, c.query);
+  await refreshMeta();
+  announce(`Saved ${c.name.trim()}`);
+}
+
+export async function deleteCollection(c: Collection) {
+  if (isFixtureMode) throw new Error("Collections are read-only in fixture mode");
+  await Library.deleteCollection(c.id);
+  view.value = { kind: "all" };
+  await refreshMeta();
+  announce(`Deleted ${c.name}`);
 }
 
 export async function startSync(full: boolean) {

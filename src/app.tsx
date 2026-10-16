@@ -44,6 +44,7 @@ import { Links, Reader } from "./links";
 import { HighlightList, Highlighter, HighlightsView, usePostHighlights } from "./highlights";
 import { DuplicatesView, WallView } from "./wall";
 import { WhatsNew } from "./changelog";
+import { CollectionEditor } from "./collection";
 import { Avatar, longDate, longDay, MediaGrid, openExternal, previewRatio, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
@@ -483,6 +484,8 @@ function Feed() {
   const desk = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const width = useSignal(900);
+  const editing = useSignal<number | null>(null);
+  const editButton = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
     const el = desk.current!;
@@ -511,6 +514,7 @@ function Feed() {
   });
 
   const v = view.value;
+  const shown = v.kind === "collection" ? collections.value.find((c) => c.id === v.id) : undefined;
   return (
     <section class="feed" aria-labelledby="feed-title">
       <div class="feed-head">
@@ -519,7 +523,27 @@ function Feed() {
           {loading.value && items.value.length === 0 ? "Loading…" : count(total.value, "post")}
           {search.value && ` matching “${search.value}”`}
         </span>
+        {shown && !isFixtureMode && (
+          <button
+            ref={editButton}
+            class="chip edit"
+            aria-expanded={editing.value === shown.id}
+            onClick={() => (editing.value = editing.value === shown.id ? null : shown.id)}
+          >
+            Edit collection
+          </button>
+        )}
       </div>
+      {shown && editing.value === shown.id && (
+        <CollectionEditor
+          key={shown.id}
+          c={shown}
+          onClose={() => {
+            editing.value = null;
+            editButton.current?.focus();
+          }}
+        />
+      )}
       {!loading.value && total.value === 0 && <Empty />}
       <div class="columns" ref={desk}>
         {columns.value.map((col, i) => (
