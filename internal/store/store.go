@@ -1,0 +1,432 @@
+// Package store keeps the bookmark library in SQLite: posts, when each was
+// bookmarked and last seen on X, the user's collections and notes, and a log
+// of syncs.
+package store
+
+import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"roost/internal/xparse"
+
+	_ "modernc.org/sqlite"
+)
+
+type Store struct{ db *sql.DB }
+
+var migrations = []string{`
+CREATE TABLE tweets (
+	rowid INTEGER PRIMARY KEY,
+	id TEXT NOT NULL UNIQUE,
+	author_handle TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	has_media INTEGER NOT NULL,
+	data TEXT NOT NULL,
+	raw TEXT NOT NULL
+);
+CREATE INDEX tweets_author ON tweets(author_handle COLLATE NOCASE);
+CREATE VIRTUAL TABLE tweets_fts USING fts5(text, author, quoted, tokenize = 'unicode61 remove_diacritics 2');
+
+CREATE TABLE bookmarks (
+	tweet_id TEXT PRIMARY KEY REFERENCES tweets(id),
+	sort_index INTEGER NOT NULL,
+	first_seen_at INTEGER NOT NULL,
+	last_seen_at INTEGER NOT NULL,
+	removed_at INTEGER,
+	note TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX bookmarks_order ON bookmarks(sort_index DESC);
+
+CREATE TABLE collections (
+	id INTEGER PRIMARY KEY,
+	name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+	hue INTEGER NOT NULL,
+	created_at INTEGER NOT NULL
+);
+CREATE TABLE collection_items (
+	collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+	tweet_id TEXT NOT NULL REFERENCES tweets(id),
+	added_at INTEGER NOT NULL,
+	PRIMARY KEY (collection_id, tweet_id)
+);
+CREATE INDEX collection_items_tweet ON collection_items(tweet_id);
+
+CREATE TABLE syncs (
+	id INTEGER PRIMARY KEY,
+	full INTEGER NOT NULL,
+	started_at INTEGER NOT NULL,
+	finished_at INTEGER NOT NULL,
+	added INTEGER NOT NULL,
+	seen INTEGER NOT NULL,
+	removed INTEGER NOT NULL,
+	reached_end INTEGER NOT NULL,
+	error TEXT NOT NULL DEFAULT ''
+);
+`}
+
+// Open opens the library at path, creating and migrating it as needed.
+func Open(path string) (*Store, error) {
+	db, err := sql.Open("sqlite", "file:"+path+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	var version int
+	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("open library: %w", err)
+	}
+	for i := version; i < len(migrations); i++ {
+		if _, err := db.Exec(migrations[i]); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("migrate library to version %d: %w", i+1, err)
+		}
+		if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
+			db.Close()
+			return nil, err
+		}
+	}
+	return &Store{db: db}, nil
+}
+
+func (s *Store) Close() error { return s.db.Close() }
+
+// Ingest records entries seen on X at seenAt. An entry is new when the
+// library did not hold it as a current bookmark, which includes a post
+// bookmarked again after being removed.
+func (s *Store) Ingest(entries []xparse.Entry, seenAt time.Time) (added int, err error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	now := seenAt.UnixMilli()
+	for _, e := range entries {
+		t := e.Tweet
+		data, _ := json.Marshal(t)
+		var rowid int64
+		err := tx.QueryRow(`
+			INSERT INTO tweets (id, author_handle, created_at, has_media, data, raw) VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET author_handle = excluded.author_handle, has_media = excluded.has_media,
+				data = excluded.data, raw = excluded.raw
+			RETURNING rowid`,
+			t.ID, t.AuthorHandle, t.CreatedAt.UnixMilli(), len(t.Media) > 0, string(data), string(t.Raw)).Scan(&rowid)
+		if err != nil {
+			return 0, fmt.Errorf("store post %s: %w", t.ID, err)
+		}
+		quoted := ""
+		if t.Quoted != nil {
+			quoted = t.Quoted.AuthorHandle + " " + t.Quoted.AuthorName + " " + t.Quoted.Text
+		}
+		if _, err := tx.Exec(`DELETE FROM tweets_fts WHERE rowid = ?`, rowid); err != nil {
+			return 0, err
+		}
+		if _, err := tx.Exec(`INSERT INTO tweets_fts (rowid, text, author, quoted) VALUES (?, ?, ?, ?)`,
+			rowid, t.Text, t.AuthorHandle+" "+t.AuthorName, quoted); err != nil {
+			return 0, err
+		}
+
+		var current bool
+		err = tx.QueryRow(`SELECT removed_at IS NULL FROM bookmarks WHERE tweet_id = ?`, t.ID).Scan(&current)
+		if errors.Is(err, sql.ErrNoRows) {
+			current = false
+		} else if err != nil {
+			return 0, err
+		}
+		if !current {
+			added++
+		}
+		if _, err := tx.Exec(`
+			INSERT INTO bookmarks (tweet_id, sort_index, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)
+			ON CONFLICT(tweet_id) DO UPDATE SET sort_index = excluded.sort_index,
+				last_seen_at = excluded.last_seen_at, removed_at = NULL`,
+			t.ID, e.SortIndex, now, now); err != nil {
+			return 0, err
+		}
+	}
+	return added, tx.Commit()
+}
+
+// MarkRemoved marks every current bookmark not seen since syncStart as
+// removed on X. Call it only after a sync has read the whole timeline.
+func (s *Store) MarkRemoved(syncStart, now time.Time) (int, error) {
+	res, err := s.db.Exec(`UPDATE bookmarks SET removed_at = ? WHERE removed_at IS NULL AND last_seen_at < ?`,
+		now.UnixMilli(), syncStart.UnixMilli())
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	return int(n), err
+}
+
+// Query selects bookmarks for the library view.
+type Query struct {
+	Search string `json:"search"`
+	// Collection is a collection ID, 0 for every bookmark, or Unsorted.
+	Collection int64  `json:"collection"`
+	Author     string `json:"author"`
+	MediaOnly  bool   `json:"mediaOnly"`
+	// Removed lists bookmarks removed on X instead of current ones.
+	Removed bool `json:"removed"`
+	Offset  int  `json:"offset"`
+	Limit   int  `json:"limit"`
+}
+
+// Unsorted selects bookmarks in no collection.
+const Unsorted = -1
+
+type Bookmark struct {
+	Tweet       xparse.Tweet `json:"tweet"`
+	Note        string       `json:"note"`
+	Collections []int64      `json:"collections"`
+	FirstSeenAt time.Time    `json:"firstSeenAt"`
+	RemovedAt   *time.Time   `json:"removedAt"`
+}
+
+type ListResult struct {
+	Items []Bookmark `json:"items"`
+	Total int        `json:"total"`
+}
+
+func (s *Store) List(q Query) (ListResult, error) {
+	where := []string{"b.removed_at IS NULL"}
+	if q.Removed {
+		where[0] = "b.removed_at IS NOT NULL"
+	}
+	var args []any
+	from := "bookmarks b JOIN tweets t ON t.id = b.tweet_id"
+	if match := ftsQuery(q.Search); match != "" {
+		from += " JOIN tweets_fts f ON f.rowid = t.rowid"
+		where = append(where, "tweets_fts MATCH ?")
+		args = append(args, match)
+	}
+	switch {
+	case q.Collection == Unsorted:
+		where = append(where, "NOT EXISTS (SELECT 1 FROM collection_items ci WHERE ci.tweet_id = b.tweet_id)")
+	case q.Collection > 0:
+		where = append(where, "EXISTS (SELECT 1 FROM collection_items ci WHERE ci.tweet_id = b.tweet_id AND ci.collection_id = ?)")
+		args = append(args, q.Collection)
+	}
+	if q.Author != "" {
+		where = append(where, "t.author_handle = ? COLLATE NOCASE")
+		args = append(args, q.Author)
+	}
+	if q.MediaOnly {
+		where = append(where, "t.has_media")
+	}
+	cond := strings.Join(where, " AND ")
+
+	var res ListResult
+	if err := s.db.QueryRow("SELECT count(*) FROM "+from+" WHERE "+cond, args...).Scan(&res.Total); err != nil {
+		return res, fmt.Errorf("count bookmarks: %w", err)
+	}
+	limit := q.Limit
+	if limit <= 0 {
+		limit = 60
+	}
+	rows, err := s.db.Query(`
+		SELECT t.data, b.note, b.first_seen_at, b.removed_at,
+			(SELECT group_concat(collection_id) FROM collection_items ci WHERE ci.tweet_id = b.tweet_id)
+		FROM `+from+` WHERE `+cond+` ORDER BY b.sort_index DESC LIMIT ? OFFSET ?`,
+		append(args, limit, q.Offset)...)
+	if err != nil {
+		return res, fmt.Errorf("list bookmarks: %w", err)
+	}
+	defer rows.Close()
+	res.Items = []Bookmark{}
+	for rows.Next() {
+		var data, note string
+		var firstSeen int64
+		var removed sql.NullInt64
+		var cols sql.NullString
+		if err := rows.Scan(&data, &note, &firstSeen, &removed, &cols); err != nil {
+			return res, err
+		}
+		b := Bookmark{Note: note, FirstSeenAt: time.UnixMilli(firstSeen), Collections: []int64{}}
+		if err := json.Unmarshal([]byte(data), &b.Tweet); err != nil {
+			return res, err
+		}
+		if removed.Valid {
+			at := time.UnixMilli(removed.Int64)
+			b.RemovedAt = &at
+		}
+		for _, c := range strings.Split(cols.String, ",") {
+			var id int64
+			if _, err := fmt.Sscan(c, &id); err == nil {
+				b.Collections = append(b.Collections, id)
+			}
+		}
+		res.Items = append(res.Items, b)
+	}
+	return res, rows.Err()
+}
+
+// ftsQuery turns what the user typed into an FTS5 query that matches every
+// word as a prefix.
+func ftsQuery(search string) string {
+	var terms []string
+	for _, word := range strings.Fields(search) {
+		word = strings.ReplaceAll(word, `"`, "")
+		if word != "" {
+			terms = append(terms, `"`+word+`"*`)
+		}
+	}
+	return strings.Join(terms, " ")
+}
+
+type Collection struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Hue   int    `json:"hue"`
+	Count int    `json:"count"`
+}
+
+func (s *Store) Collections() ([]Collection, error) {
+	rows, err := s.db.Query(`
+		SELECT c.id, c.name, c.hue,
+			(SELECT count(*) FROM collection_items ci JOIN bookmarks b ON b.tweet_id = ci.tweet_id
+			 WHERE ci.collection_id = c.id AND b.removed_at IS NULL)
+		FROM collections c ORDER BY c.name COLLATE NOCASE`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Collection{}
+	for rows.Next() {
+		var c Collection
+		if err := rows.Scan(&c.ID, &c.Name, &c.Hue, &c.Count); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) CreateCollection(name string, hue int, now time.Time) (Collection, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return Collection{}, errors.New("a collection needs a name")
+	}
+	c := Collection{Name: name, Hue: hue}
+	err := s.db.QueryRow(`INSERT INTO collections (name, hue, created_at) VALUES (?, ?, ?) RETURNING id`,
+		name, hue, now.UnixMilli()).Scan(&c.ID)
+	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
+		return c, fmt.Errorf("a collection named %q already exists", name)
+	}
+	return c, err
+}
+
+func (s *Store) UpdateCollection(id int64, name string, hue int) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("a collection needs a name")
+	}
+	_, err := s.db.Exec(`UPDATE collections SET name = ?, hue = ? WHERE id = ?`, name, hue, id)
+	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
+		return fmt.Errorf("a collection named %q already exists", name)
+	}
+	return err
+}
+
+func (s *Store) DeleteCollection(id int64) error {
+	_, err := s.db.Exec(`DELETE FROM collections WHERE id = ?`, id)
+	return err
+}
+
+// SetInCollection adds the post to the collection or takes it out.
+func (s *Store) SetInCollection(tweetID string, collectionID int64, in bool, now time.Time) error {
+	var err error
+	if in {
+		_, err = s.db.Exec(`INSERT OR IGNORE INTO collection_items (collection_id, tweet_id, added_at) VALUES (?, ?, ?)`,
+			collectionID, tweetID, now.UnixMilli())
+	} else {
+		_, err = s.db.Exec(`DELETE FROM collection_items WHERE collection_id = ? AND tweet_id = ?`, collectionID, tweetID)
+	}
+	return err
+}
+
+func (s *Store) SetNote(tweetID, note string) error {
+	_, err := s.db.Exec(`UPDATE bookmarks SET note = ? WHERE tweet_id = ?`, strings.TrimSpace(note), tweetID)
+	return err
+}
+
+type Author struct {
+	Handle string `json:"handle"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+	Count  int    `json:"count"`
+}
+
+// Authors returns the authors with the most current bookmarks.
+func (s *Store) Authors(limit int) ([]Author, error) {
+	rows, err := s.db.Query(`
+		SELECT t.author_handle, json_extract(max(t.data), '$.authorName'), json_extract(max(t.data), '$.authorAvatar'), count(*) AS n
+		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id
+		WHERE b.removed_at IS NULL
+		GROUP BY t.author_handle COLLATE NOCASE ORDER BY n DESC, t.author_handle LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Author{}
+	for rows.Next() {
+		var a Author
+		var name, avatar sql.NullString
+		if err := rows.Scan(&a.Handle, &name, &avatar, &a.Count); err != nil {
+			return nil, err
+		}
+		a.Name, a.Avatar = name.String, avatar.String
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+type Sync struct {
+	Full       bool      `json:"full"`
+	StartedAt  time.Time `json:"startedAt"`
+	FinishedAt time.Time `json:"finishedAt"`
+	Added      int       `json:"added"`
+	Seen       int       `json:"seen"`
+	Removed    int       `json:"removed"`
+	ReachedEnd bool      `json:"reachedEnd"`
+	Error      string    `json:"error"`
+}
+
+func (s *Store) RecordSync(r Sync) error {
+	_, err := s.db.Exec(`INSERT INTO syncs (full, started_at, finished_at, added, seen, removed, reached_end, error)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, r.Full, r.StartedAt.UnixMilli(), r.FinishedAt.UnixMilli(),
+		r.Added, r.Seen, r.Removed, r.ReachedEnd, r.Error)
+	return err
+}
+
+type Stats struct {
+	Total    int   `json:"total"`
+	Removed  int   `json:"removed"`
+	Unsorted int   `json:"unsorted"`
+	LastSync *Sync `json:"lastSync"`
+}
+
+func (s *Store) Stats() (Stats, error) {
+	var st Stats
+	err := s.db.QueryRow(`
+		SELECT count(*) FILTER (WHERE removed_at IS NULL), count(*) FILTER (WHERE removed_at IS NOT NULL),
+			count(*) FILTER (WHERE removed_at IS NULL AND NOT EXISTS (SELECT 1 FROM collection_items ci WHERE ci.tweet_id = bookmarks.tweet_id))
+		FROM bookmarks`).Scan(&st.Total, &st.Removed, &st.Unsorted)
+	if err != nil {
+		return st, err
+	}
+	var r Sync
+	var started, finished int64
+	err = s.db.QueryRow(`SELECT full, started_at, finished_at, added, seen, removed, reached_end, error
+		FROM syncs ORDER BY id DESC LIMIT 1`).Scan(&r.Full, &started, &finished, &r.Added, &r.Seen, &r.Removed, &r.ReachedEnd, &r.Error)
+	if errors.Is(err, sql.ErrNoRows) {
+		return st, nil
+	}
+	r.StartedAt, r.FinishedAt = time.UnixMilli(started), time.UnixMilli(finished)
+	st.LastSync = &r
+	return st, err
+}
