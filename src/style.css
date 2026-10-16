@@ -134,7 +134,7 @@ kbd {
   align-items: center;
   gap: 8px;
   margin: 24px 8px 6px;
-  font: 500 10.5px var(--mono);
+  font: 500 11px var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--ink-3);
@@ -205,7 +205,7 @@ kbd {
 .field-label {
   display: block;
   margin: 8px 8px 6px;
-  font: 500 10.5px var(--mono);
+  font: 500 11px var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--ink-2);
@@ -488,7 +488,7 @@ div.empty p { margin: 0 0 14px; }
   border-radius: 3px;
   background: oklch(0 0 0 / 0.62);
   color: #fff;
-  font: 600 10px var(--mono);
+  font: 600 11px var(--mono);
   letter-spacing: 0.06em;
 }
 
@@ -526,7 +526,7 @@ div.empty p { margin: 0 0 14px; }
   border: 1.5px solid currentColor;
   border-radius: 2px;
   color: var(--hue);
-  font: 600 10px var(--mono);
+  font: 600 11px var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   rotate: var(--tilt);
@@ -544,7 +544,7 @@ div.empty p { margin: 0 0 14px; }
   border: 3px double var(--accent);
   border-radius: 3px;
   color: var(--accent);
-  font: 700 10.5px var(--mono);
+  font: 700 11px var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   rotate: 7deg;
@@ -578,7 +578,7 @@ div.empty p { margin: 0 0 14px; }
 
 .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .sheet-kicker {
-  font: 600 10.5px var(--mono);
+  font: 600 11px var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--accent);
@@ -609,7 +609,7 @@ div.empty p { margin: 0 0 14px; }
   width: 100%;
   padding: 0;
   margin: 0 0 8px;
-  font: 500 10.5px var(--mono);
+  font: 500 11px var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--ink-3);
@@ -744,7 +744,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 .hints[hidden] { display: none; }
 .hints-title {
   margin: 0 8px 6px;
-  font: 500 10.5px var(--mono);
+  font: 500 11px var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--ink-3);
@@ -887,7 +887,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
 .thread-tag {
   display: inline-block;
   margin: 8px 0 0;
-  font: 10.5px var(--mono);
+  font: 11px var(--mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--accent);
@@ -917,7 +917,7 @@ body:has(.fixture-switcher) .notice { bottom: 64px; }
   border-radius: 4px;
   box-shadow: inset 0 0 0 1px var(--rule);
 }
-.link-card .site, .reader .site { font: 10.5px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin: 0; }
+.link-card .site, .reader .site { font: 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin: 0; }
 .link-card .title { font: 600 16px/1.3 var(--serif); color: var(--ink); text-decoration: none; }
 @media (hover: hover) { .link-card .title:hover { text-decoration: underline; } }
 .link-card .excerpt { margin: 0; font-size: 14px; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -985,7 +985,7 @@ mark { background: var(--highlight); color: inherit; padding: 0 1px; border-radi
 /* ---- Suggestions ---- */
 
 .suggested { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
-.suggested-label { font: 10.5px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin-right: 2px; }
+.suggested-label { font: 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin-right: 2px; }
 .suggestion {
   padding: 3px 9px;
   border: 1px dashed var(--hue);
@@ -999,7 +999,7 @@ mark { background: var(--highlight); color: inherit; padding: 0 1px; border-radi
 }
 @media (hover: hover) { .suggestion:hover { background: color-mix(in oklch, var(--hue) 14%, transparent); border-style: solid; } }
 .bin[data-suggested] { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--hue) 45%, transparent); }
-.bin-hint { flex: none !important; font: 10px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.bin-hint { flex: none !important; font: 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
 .setting .path { padding: 0; border: 0; background: none; font: inherit; color: var(--ink-2); text-decoration: underline; text-underline-offset: 2px; }
 
 /* ---- Media wall ---- */
@@ -1030,7 +1030,7 @@ mark { background: var(--highlight); color: inherit; padding: 0 1px; border-radi
   border-radius: 3px;
   background: var(--card);
   color: var(--accent);
-  font: 700 10px var(--mono);
+  font: 700 11px var(--mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1102,7 +1102,7 @@ mark { background: var(--highlight); color: inherit; padding: 0 1px; border-radi
 .changelog { width: min(560px, 92vw); max-height: min(720px, 86vh); overscroll-behavior: contain; }
 .release { padding: 14px 0 6px; border-top: 1px solid var(--rule); }
 .release h3 { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; font: 600 20px var(--serif); }
-.this-version { font: 10.5px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.this-version { font: 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
 .release p, .release li { font: 15px/1.5 var(--serif); color: var(--ink-2); text-wrap: pretty; }
 .release p { margin: 0 0 8px; }
 .release ul { margin: 0 0 8px; padding-left: 1.2em; }
