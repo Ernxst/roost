@@ -227,8 +227,8 @@ export function usePostHighlights(b: Bookmark | undefined) {
   }, [b?.tweet.id]);
   async function restore(h: Highlight) {
     try {
-      const back = await Library.addHighlight(h.tweetId, h.source, h.quote);
-      list.value = [...list.value, back];
+      await Library.restoreHighlight(h.id, h.tweetId, h.source, h.quote, h.note, h.createdAt);
+      list.value = [...list.value, h];
       announce("Highlight restored");
     } catch (err) {
       fail(err);

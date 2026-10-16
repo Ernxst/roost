@@ -4,7 +4,7 @@ import type { ComponentChildren } from "preact";
 import { Stamps } from "./card";
 import { Library, type Bookmark, type Duplicates, type Media } from "./mygo";
 import { count, fail, openPost, stats } from "./state";
-import { Avatar, cached, shortDate } from "./tweet";
+import { Avatar, cached, mediaAlternative, shortDate } from "./tweet";
 
 type Kind = "all" | "photo" | "video" | "animated_gif";
 const kinds: [Kind, string][] = [
@@ -65,7 +65,7 @@ function Tile({ b, m }: { b: Bookmark; m: Media }) {
   const ratio = m.width && m.height ? Math.min(Math.max(m.width / m.height, 0.5), 2.2) : 1;
   return (
     <button class={`tile${b.removedAt ? " gone" : ""}`} style={{ aspectRatio: String(ratio) }} onClick={() => openPost(t.id)}>
-      <img src={cached(`${m.thumb}?name=small`)} alt="" loading="lazy" />
+      <img src={cached(`${m.thumb}?name=small`)} alt={mediaAlternative(m)} loading="lazy" />
       {m.kind !== "photo" && (
         <span class="badge" aria-hidden="true">
           {m.kind === "video" ? "▶" : "GIF"}
@@ -76,7 +76,7 @@ function Tile({ b, m }: { b: Bookmark; m: Media }) {
       </span>
       {b.removedAt && (
         <span class="tile-gone">
-          <span class="sr-only">, </span>gone from X
+          <span class="sr-only">, </span>missing from bookmarks
         </span>
       )}
     </button>

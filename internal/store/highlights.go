@@ -47,6 +47,28 @@ func (s *Store) AddHighlight(tweetID, source, quote string, now time.Time) (High
 	return h, tx.Commit()
 }
 
+// RestoreHighlight puts a deleted highlight back with its original identity and content.
+func (s *Store) RestoreHighlight(h Highlight) error {
+	h.Quote = strings.TrimSpace(h.Quote)
+	h.Note = strings.TrimSpace(h.Note)
+	if h.ID <= 0 || h.TweetID == "" || h.Quote == "" || h.CreatedAt.IsZero() {
+		return errors.New("that highlight cannot be restored")
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`INSERT INTO highlights (id, tweet_id, source, quote, note, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		h.ID, h.TweetID, h.Source, h.Quote, h.Note, h.CreatedAt.UnixMilli()); err != nil {
+		return err
+	}
+	if err := indexNotes(tx, h.TweetID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *Store) DeleteHighlight(id int64) error {
 	tx, err := s.db.Begin()
 	if err != nil {

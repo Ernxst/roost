@@ -11,7 +11,7 @@ const HINTS: [string, string][] = [
   ["in:", "in a collection; in:none for unsorted"],
   ["-", "leave out a word or filter"],
   ["before:2025-01-01", "or after:, by post date"],
-  ["is:gone", "removed on X"],
+  ["is:gone", "missing from bookmarks"],
   ["domain:github.com", "posts linking to a site"],
   ["lang:en", "written in a language"],
   ["likes:1000", "at least that many likes"],

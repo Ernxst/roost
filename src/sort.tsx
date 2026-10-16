@@ -102,9 +102,13 @@ export function SortMode() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey || opened.value || inDialog(e)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || opened.value || inDialog(e)) return;
       const el = e.target as HTMLElement;
-      if (["INPUT", "TEXTAREA"].includes(el.tagName)) return;
+      if (
+        el.isContentEditable ||
+        ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "A", "SUMMARY"].includes(el.tagName) ||
+        el.closest("[role='button'], [role='link']")
+      ) return;
       const digit = /^Digit([1-9])$/.exec(e.code);
       if (digit) fileInto(Number(digit[1]) - 1, e.shiftKey);
       else if (e.key === "x") aside();

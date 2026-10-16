@@ -423,6 +423,20 @@ func (l *Library) AddHighlight(tweetID, source, quote string) (store.Highlight, 
 	return s.AddHighlight(tweetID, source, quote, time.Now())
 }
 
+func (l *Library) RestoreHighlight(id int64, tweetID, source, quote, note, createdAt string) error {
+	s, err := l.store()
+	if err != nil {
+		return err
+	}
+	at, err := time.Parse(time.RFC3339Nano, createdAt)
+	if err != nil {
+		return fmt.Errorf("parse highlight creation time: %w", err)
+	}
+	return s.RestoreHighlight(store.Highlight{
+		ID: id, TweetID: tweetID, Source: source, Quote: quote, Note: note, CreatedAt: at,
+	})
+}
+
 func (l *Library) DeleteHighlight(id int64) error {
 	s, err := l.store()
 	if err != nil {
@@ -591,7 +605,7 @@ func (l *Library) Duplicates() ([]store.Duplicates, error) {
 
 // Sync starts bringing the library up to date with X and returns at once;
 // SyncProgress reports how it goes. A full sync reads every bookmark and
-// marks the ones gone from X as removed.
+// records bookmarks that are missing after the complete scan.
 func (l *Library) Sync(full bool) error { return l.startSync(full, false) }
 
 // startSync reads X's bookmarks in the background. A background sync tells

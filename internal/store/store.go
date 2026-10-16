@@ -161,7 +161,7 @@ func (s *Store) Close() error { return s.db.Close() }
 // parserVersion rises whenever xparse reads a field it did not read before.
 // Opening a library written by an older parser parses every post again from
 // the raw object it keeps, so posts saved earlier gain the field.
-const parserVersion = 1
+const parserVersion = 2
 
 func (s *Store) reparse() error {
 	var version int

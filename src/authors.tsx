@@ -62,7 +62,7 @@ export function AuthorsView() {
 
 /**
  * What the library holds by the author in view: a link to their profile,
- * how many of their posts are gone from X, and the collections their posts
+ * how many of their bookmarks are missing, and the collections their posts
  * are filed in, each of which narrows the feed to it.
  */
 export function AuthorHead({ handle }: { handle: string }) {
@@ -100,7 +100,7 @@ export function AuthorHead({ handle }: { handle: string }) {
             })}
             {a.gone > 0 && (
               <button class="chip" aria-pressed={search.value === "is:gone"} onClick={() => pick("is:gone")}>
-                Gone from X · {a.gone.toLocaleString()}
+                Missing from bookmarks · {a.gone.toLocaleString()}
               </button>
             )}
           </div>

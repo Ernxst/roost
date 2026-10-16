@@ -211,7 +211,13 @@ export async function refreshMeta() {
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let lastSearch = search.peek();
 effect(() => {
-  view.value;
+  const activeView = view.value.kind;
+  if (!["all", "unsorted", "removed", "collection", "author", "sort"].includes(activeView)) {
+    batch(() => {
+      search.value = "";
+      mediaOnly.value = false;
+    });
+  }
   mediaOnly.value;
   const s = search.value;
   selected.value = new Set();
@@ -431,7 +437,7 @@ events.syncProgress.on((p) => {
     if (p.phase === "failed") announce(`Sync failed: ${p.message}`, true, { label: "Try again", run: () => startSync(p.full) });
     else {
       const parts = [`${p.added} new`];
-      if (p.removed) parts.push(`${p.removed} removed on X`);
+      if (p.removed) parts.push(`${p.removed} missing from bookmarks`);
       announce(`Sync finished: ${parts.join(", ")}`);
     }
   }

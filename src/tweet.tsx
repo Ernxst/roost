@@ -150,6 +150,12 @@ export function previewRatio(m: Media): number | undefined {
   return Math.min(Math.max(m.width / m.height, 0.75), 2);
 }
 
+export function mediaAlternative(m: Media): string {
+  if (m.description?.trim()) return m.description.trim();
+  const kind = m.kind === "photo" ? "Photo" : m.kind === "video" ? "Video" : "GIF";
+  return `${kind} attachment; no description was provided`;
+}
+
 /** Media laid out as X does: one item at its own shape, more in a grid. */
 export function MediaGrid({ media, playable = false }: { media: Media[]; playable?: boolean }) {
   if (media.length === 0) return null;
@@ -169,13 +175,14 @@ export function MediaGrid({ media, playable = false }: { media: Media[]; playabl
               playsInline
               preload="metadata"
               loop={m.kind === "animated_gif"}
+              aria-label={mediaAlternative(m)}
               style={style}
             />
           );
         }
         return (
           <figure key={m.thumb} class="frame" style={style}>
-            <img src={cached(`${m.thumb}?name=small`)} alt="" loading="lazy" />
+            <img src={cached(`${m.thumb}?name=small`)} alt={mediaAlternative(m)} loading="lazy" />
             {m.kind !== "photo" && (
               <span class="badge">
                 {m.kind === "video" ? (

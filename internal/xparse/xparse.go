@@ -52,11 +52,12 @@ type Translation struct {
 
 // Media is a photo, video or GIF attached to a post.
 type Media struct {
-	Kind   string `json:"kind"` // photo, video or animated_gif
-	Thumb  string `json:"thumb"`
-	Video  string `json:"video,omitempty"`
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
+	Kind        string `json:"kind"` // photo, video or animated_gif
+	Thumb       string `json:"thumb"`
+	Video       string `json:"video,omitempty"`
+	Description string `json:"description,omitempty"`
+	Width       int    `json:"width"`
+	Height      int    `json:"height"`
 }
 
 // Link is a URL in the text, which X shortens to t.co.
@@ -135,10 +136,11 @@ func parseTweet(node any) (Tweet, bool) {
 	media := list(dig(legacy, "extended_entities", "media"))
 	for _, m := range media {
 		item := Media{
-			Kind:   str(dig(m, "type")),
-			Thumb:  str(dig(m, "media_url_https")),
-			Width:  num(dig(m, "original_info", "width")),
-			Height: num(dig(m, "original_info", "height")),
+			Kind:        str(dig(m, "type")),
+			Thumb:       str(dig(m, "media_url_https")),
+			Description: str(dig(m, "ext_alt_text")),
+			Width:       num(dig(m, "original_info", "width")),
+			Height:      num(dig(m, "original_info", "height")),
 		}
 		best := -1
 		for _, v := range list(dig(m, "video_info", "variants")) {
