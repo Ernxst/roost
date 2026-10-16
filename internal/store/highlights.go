@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -15,8 +16,10 @@ type Highlight struct {
 	TweetID string `json:"tweetId"`
 	// Source is the URL of the linked page the passage is from, or empty
 	// for the post itself or its thread.
-	Source    string    `json:"source"`
-	Quote     string    `json:"quote"`
+	Source string `json:"source"`
+	Quote  string `json:"quote"`
+	// Note is what the user wrote about the passage.
+	Note      string    `json:"note"`
 	CreatedAt time.Time `json:"createdAt"`
 	// Tweet is the post the highlight belongs to, filled in by AllHighlights.
 	Tweet *xparse.Tweet `json:"tweet,omitempty"`
@@ -28,14 +31,60 @@ func (s *Store) AddHighlight(tweetID, source, quote string, now time.Time) (High
 		return Highlight{}, errors.New("select some text to highlight")
 	}
 	h := Highlight{TweetID: tweetID, Source: source, Quote: quote, CreatedAt: time.UnixMilli(now.UnixMilli())}
-	err := s.db.QueryRow(`INSERT INTO highlights (tweet_id, source, quote, created_at) VALUES (?, ?, ?, ?) RETURNING id`,
+	tx, err := s.db.Begin()
+	if err != nil {
+		return h, err
+	}
+	defer tx.Rollback()
+	err = tx.QueryRow(`INSERT INTO highlights (tweet_id, source, quote, created_at) VALUES (?, ?, ?, ?) RETURNING id`,
 		tweetID, source, quote, now.UnixMilli()).Scan(&h.ID)
-	return h, err
+	if err != nil {
+		return h, err
+	}
+	if err := indexNotes(tx, tweetID); err != nil {
+		return h, err
+	}
+	return h, tx.Commit()
 }
 
 func (s *Store) DeleteHighlight(id int64) error {
-	_, err := s.db.Exec(`DELETE FROM highlights WHERE id = ?`, id)
-	return err
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var tweetID string
+	err = tx.QueryRow(`DELETE FROM highlights WHERE id = ? RETURNING tweet_id`, id).Scan(&tweetID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := indexNotes(tx, tweetID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) SetHighlightNote(id int64, note string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var tweetID string
+	err = tx.QueryRow(`UPDATE highlights SET note = ? WHERE id = ? RETURNING tweet_id`, strings.TrimSpace(note), id).Scan(&tweetID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return errors.New("that highlight no longer exists")
+	}
+	if err != nil {
+		return err
+	}
+	if err := indexNotes(tx, tweetID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // Highlights returns a post's highlights, oldest first.
@@ -49,7 +98,7 @@ func (s *Store) AllHighlights() ([]Highlight, error) {
 }
 
 func (s *Store) highlights(tail string, withTweet bool, args ...any) ([]Highlight, error) {
-	rows, err := s.db.Query(`SELECT h.id, h.tweet_id, h.source, h.quote, h.created_at, t.data
+	rows, err := s.db.Query(`SELECT h.id, h.tweet_id, h.source, h.quote, h.note, h.created_at, t.data
 		FROM highlights h JOIN tweets t ON t.id = h.tweet_id `+tail, args...)
 	if err != nil {
 		return nil, err
@@ -60,7 +109,7 @@ func (s *Store) highlights(tail string, withTweet bool, args ...any) ([]Highligh
 		var h Highlight
 		var at int64
 		var data string
-		if err := rows.Scan(&h.ID, &h.TweetID, &h.Source, &h.Quote, &at, &data); err != nil {
+		if err := rows.Scan(&h.ID, &h.TweetID, &h.Source, &h.Quote, &h.Note, &at, &data); err != nil {
 			return nil, err
 		}
 		h.CreatedAt = time.UnixMilli(at)

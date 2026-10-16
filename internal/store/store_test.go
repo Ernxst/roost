@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -10,12 +11,79 @@ import (
 	"roost/internal/xparse"
 )
 
+func TestMigrationFailureRollsBackSchemaAndVersion(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lib.db")
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TABLE collections (id INTEGER PRIMARY KEY)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Open(path); err == nil {
+		t.Fatal("migration succeeded despite an existing collections table")
+	}
+
+	db, err = sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var version int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	var tweets int
+	if err := db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'tweets'`).Scan(&tweets); err != nil {
+		t.Fatal(err)
+	}
+	if version != 0 || tweets != 0 {
+		t.Fatalf("failed migration left version %d and tweets table count %d", version, tweets)
+	}
+}
+
 func entry(id string, idx int64, text string, media bool) xparse.Entry {
-	t := xparse.Tweet{ID: id, AuthorHandle: "ada", AuthorName: "Ada Lovelace", Text: text, CreatedAt: time.Unix(1, 0), Raw: []byte("{}")}
+	t := xparse.Tweet{ID: id, AuthorHandle: "ada", AuthorName: "Ada Lovelace", Text: text, CreatedAt: time.Unix(1, 0), Raw: []byte(`{"legacy":{"lang":"en"}}`)}
 	if media {
 		t.Media = []xparse.Media{{Kind: "photo", Thumb: "x.jpg"}}
 	}
 	return xparse.Entry{SortIndex: idx, Tweet: t}
+}
+
+func TestVectorCandidatesSkipNonEnglishAndDropStaleVectors(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	english := entry("1", 10, "English post", false)
+	japanese := entry("2", 20, "日本語の投稿", false)
+	japanese.Tweet.Raw = []byte(`{"legacy":{"lang":"ja"}}`)
+	if _, err := s.Ingest([]xparse.Entry{english, japanese}, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveVectors("m1", map[string][]float32{"2": {0.5, 0.5}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DropNonEnglishVectors(); err != nil {
+		t.Fatal(err)
+	}
+	var vectors int
+	if err := s.db.QueryRow(`SELECT count(*) FROM vectors`).Scan(&vectors); err != nil {
+		t.Fatal(err)
+	}
+	if vectors != 0 {
+		t.Fatalf("non-English vectors left = %d", vectors)
+	}
+	candidates, err := s.VectorCandidates("m1", 10)
+	if err != nil || len(candidates) != 1 || candidates[0].ID != "1" {
+		t.Fatalf("English vector candidates = %+v, %v; want only post 1", candidates, err)
+	}
 }
 
 func ids(t *testing.T, s *Store, q Query) []string {
@@ -153,9 +221,15 @@ func TestSearchOperators(t *testing.T) {
 		idx, _ := strconv.ParseInt(id, 10, 64)
 		return xparse.Entry{SortIndex: idx, Tweet: xparse.Tweet{ID: id, AuthorHandle: handle, AuthorName: handle, Text: text, CreatedAt: at, Media: media, Raw: []byte("{}")}}
 	}
+	looms := mk("1", "ada", "engines and looms", day(2024, 5, 1))
+	looms.Tweet.Links = []xparse.Link{{Expanded: "https://www.GitHub.com/ada/looms"}}
+	looms.Tweet.Raw = []byte(`{"legacy":{"lang":"en","favorite_count":1200}}`)
+	video := mk("2", "bob", "a video of looms", day(2025, 2, 1), xparse.Media{Kind: "video"})
+	video.Tweet.Links = []xparse.Link{{Expanded: "https://gist.github.com/bob/1"}, {Expanded: "https://notgithub.com/"}}
+	video.Tweet.Raw = []byte(`{"legacy":{"lang":"fr","favorite_count":40}}`)
 	s.Ingest([]xparse.Entry{
-		mk("1", "ada", "engines and looms", day(2024, 5, 1)),
-		mk("2", "bob", "a video of looms", day(2025, 2, 1), xparse.Media{Kind: "video"}),
+		looms,
+		video,
 		mk("3", "ada", "photos of engines", day(2025, 6, 1), xparse.Media{Kind: "photo"}),
 	}, now)
 	reading, _ := s.CreateCollection("Reading list", 10, "", now)
@@ -168,12 +242,21 @@ func TestSearchOperators(t *testing.T) {
 		"has:video":                          {"2"},
 		"has:media -has:video":               {"3"},
 		"has:note":                           {"3"},
+		"check":                              {"3"},
 		`in:"reading list"`:                  {"1"},
 		"in:none":                            {"3", "2"},
 		"-in:any engines":                    {"3"},
 		"before:2025-01-01":                  {"1"},
 		"after:2025-01-31 before:2025-06-30": {"3", "2"},
 		"has:nonsense":                       {},
+		"domain:github.com":                  {"2", "1"},
+		"domain:https://gist.github.com/x":   {"2"},
+		"-domain:gist.github.com":            {"3", "1"},
+		"domain:hub.com":                     {},
+		"lang:EN":                            {"1"},
+		"likes:1000":                         {"1"},
+		"likes:0":                            {"3", "2", "1"},
+		"likes:many":                         {},
 	}
 	for q, want := range cases {
 		if got := ids(t, s, Query{Search: q}); !equal(got, want) {
@@ -366,9 +449,85 @@ func TestHighlights(t *testing.T) {
 	if len(all) != 2 || all[0].Quote != "triangles" || all[0].Tweet == nil || all[0].Tweet.ID != "1" {
 		t.Errorf("all = %+v", all)
 	}
+	if got := ids(t, s, Query{Search: "triang"}); !equal(got, []string{"1"}) {
+		t.Errorf("search for a highlighted word = %v", got)
+	}
 	s.DeleteHighlight(h.ID)
 	if hs, _ := s.Highlights("1"); len(hs) != 1 {
 		t.Errorf("after delete = %+v", hs)
+	}
+	if err := s.SetHighlightNote(all[0].ID, " compare with rasterising "); err != nil {
+		t.Fatal(err)
+	}
+	if hs, _ := s.Highlights("1"); len(hs) != 1 || hs[0].Note != "compare with rasterising" {
+		t.Errorf("highlights = %+v", hs)
+	}
+	if got := ids(t, s, Query{Search: "rasteris"}); !equal(got, []string{"1"}) {
+		t.Errorf("search for a word in a highlight's note = %v", got)
+	}
+	s.DeleteHighlight(all[0].ID)
+	if got := ids(t, s, Query{Search: "triangles"}); len(got) != 0 {
+		t.Errorf("search still finds a deleted highlight: %v", got)
+	}
+}
+
+func TestNoteWritesRollBackWhenIndexingFails(t *testing.T) {
+	for _, name := range []string{"add highlight", "delete highlight", "set highlight note", "set bookmark note"} {
+		t.Run(name, func(t *testing.T) {
+			s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer s.Close()
+			now := time.Unix(1000, 0)
+			if _, err := s.Ingest([]xparse.Entry{entry("1", 10, "post", false)}, now); err != nil {
+				t.Fatal(err)
+			}
+			h, err := s.AddHighlight("1", "", "quote", now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if name == "set bookmark note" {
+				if err := s.SetNote("1", "old bookmark note"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := s.db.Exec(`DROP TABLE notes_fts`); err != nil {
+				t.Fatal(err)
+			}
+
+			switch name {
+			case "add highlight":
+				_, err = s.AddHighlight("1", "", "new quote", now)
+			case "delete highlight":
+				err = s.DeleteHighlight(h.ID)
+			case "set highlight note":
+				err = s.SetHighlightNote(h.ID, "new highlight note")
+			case "set bookmark note":
+				err = s.SetNote("1", "new bookmark note")
+			}
+			if err == nil {
+				t.Fatal("write succeeded with the notes index missing")
+			}
+
+			var highlights int
+			if err := s.db.QueryRow(`SELECT count(*) FROM highlights`).Scan(&highlights); err != nil {
+				t.Fatal(err)
+			}
+			if (name == "add highlight" && highlights != 1) || (name == "delete highlight" && highlights != 1) {
+				t.Fatalf("highlight count after failed %s = %d", name, highlights)
+			}
+			var highlightNote, bookmarkNote string
+			if err := s.db.QueryRow(`SELECT note FROM highlights WHERE id = ?`, h.ID).Scan(&highlightNote); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.db.QueryRow(`SELECT note FROM bookmarks WHERE tweet_id = '1'`).Scan(&bookmarkNote); err != nil {
+				t.Fatal(err)
+			}
+			if highlightNote != "" || (name == "set bookmark note" && bookmarkNote != "old bookmark note") || (name != "set bookmark note" && bookmarkNote != "") {
+				t.Fatalf("notes after failed %s: highlight %q, bookmark %q", name, highlightNote, bookmarkNote)
+			}
+		})
 	}
 }
 
@@ -439,5 +598,113 @@ func TestTranslationsAreParsedAgainAndSearchable(t *testing.T) {
 	}
 	if len(res.Items) != 1 || res.Items[0].Tweet.Translation == nil || res.Items[0].Tweet.Translation.From != "ja" {
 		t.Fatalf("reopened library = %+v, want the post found by its translation", res.Items)
+	}
+}
+
+func TestLastFullSync(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if at, err := s.LastFullSync(); err != nil || !at.IsZero() {
+		t.Fatalf("empty library: %v, %v", at, err)
+	}
+	s.RecordSync(Sync{Full: true, FinishedAt: time.Unix(100, 0), ReachedEnd: true})
+	s.RecordSync(Sync{Full: false, FinishedAt: time.Unix(200, 0), ReachedEnd: true})
+	s.RecordSync(Sync{Full: true, FinishedAt: time.Unix(300, 0)})
+	s.RecordSync(Sync{Full: true, FinishedAt: time.Unix(400, 0), ReachedEnd: true, Error: "signed out"})
+	if at, _ := s.LastFullSync(); !at.Equal(time.Unix(100, 0)) {
+		t.Errorf("last full sync = %v, want the only complete one", at)
+	}
+}
+
+func TestAuthors(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	grace := entry("4", 40, "compilers", false)
+	grace.Tweet.AuthorHandle, grace.Tweet.AuthorName = "grace", "Grace Hopper"
+	s.Ingest([]xparse.Entry{entry("1", 10, "a", false), entry("2", 20, "b", false), entry("3", 30, "c", false), grace}, now)
+	s.MarkRemoved(now.Add(time.Second), now.Add(time.Second))
+	s.Ingest([]xparse.Entry{entry("1", 10, "a", false), entry("2", 20, "b", false), grace}, now.Add(2*time.Second))
+	reading, _ := s.CreateCollection("Reading", 10, "", now)
+	essays, _ := s.CreateCollection("Essays", 20, "", now)
+	s.SetInCollection("1", reading.ID, true, now)
+	s.SetInCollection("2", reading.ID, true, now)
+	s.SetInCollection("2", essays.ID, true, now)
+	s.SetInCollection("3", essays.ID, true, now)
+
+	all, err := s.Authors(-1)
+	if err != nil || len(all) != 2 || all[0].Handle != "ada" || all[0].Count != 2 {
+		t.Fatalf("authors = %+v, %v", all, err)
+	}
+	a, err := s.AuthorSummary("ADA")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Handle != "ada" || a.Name != "Ada Lovelace" || a.Count != 2 || a.Gone != 1 {
+		t.Errorf("summary = %+v", a)
+	}
+	// Post 3 is gone from X, so Essays holds one current post by Ada.
+	want := []CollectionCount{{reading.ID, 2}, {essays.ID, 1}}
+	if len(a.Collections) != 2 || a.Collections[0] != want[0] || a.Collections[1] != want[1] {
+		t.Errorf("collections = %+v, want %+v", a.Collections, want)
+	}
+	if _, err := s.AuthorSummary("nobody"); err == nil {
+		t.Error("summary of an author with no bookmarks")
+	}
+}
+
+func TestSuggestByMeaning(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	target := entry("4", 40, "kittens asleep in a box https://t.co/x", false)
+	target.Tweet.AuthorHandle = "grace"
+	s.Ingest([]xparse.Entry{
+		entry("1", 10, "my tabby on the sofa", false),
+		entry("2", 20, "feline nutrition guide", false),
+		entry("3", 30, "a box for moving house", false),
+		target,
+	}, now)
+	cats, _ := s.CreateCollection("Cats", 10, "", now)
+	moving, _ := s.CreateCollection("Moving", 20, "", now)
+	s.SetInCollection("1", cats.ID, true, now)
+	s.SetInCollection("2", cats.ID, true, now)
+	s.SetInCollection("3", moving.ID, true, now)
+
+	// By words alone, "box" ties the post to Moving.
+	if got, _ := s.Suggest("4", 3); len(got) == 0 || got[0].CollectionID != moving.ID {
+		t.Fatalf("suggestions by words = %+v, want Moving first", got)
+	}
+
+	todo, err := s.VectorCandidates("m1", 10)
+	if err != nil || len(todo) != 4 || todo[0].ID != "4" || todo[0].Text != "kittens asleep in a box  " {
+		t.Fatalf("candidates = %+v, %v", todo, err)
+	}
+	err = s.SaveVectors("m1", map[string][]float32{
+		"1": {1, 0.1, 0}, "2": {0.9, 0, 0.1}, "3": {0, 1, 0}, "4": {1, 0.3, 0},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if todo, _ := s.VectorCandidates("m1", 10); len(todo) != 0 {
+		t.Errorf("candidates after saving = %+v", todo)
+	}
+	if got, _ := s.Suggest("4", 3); len(got) == 0 || got[0].CollectionID != cats.ID {
+		t.Errorf("suggestions with meaning = %+v, want Cats first", got)
+	}
+
+	// A new model drops the old vectors, so every post is embedded again.
+	s.SaveVectors("m2", map[string][]float32{"1": {}})
+	if todo, _ := s.VectorCandidates("m2", 10); len(todo) != 3 {
+		t.Errorf("candidates for a new model = %+v, want the three not yet embedded", todo)
 	}
 }

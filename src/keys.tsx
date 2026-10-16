@@ -13,8 +13,9 @@ const FEED: Key[] = [
     "Next or previous post",
   ],
   [<kbd>Enter</kbd>, "Open the post"],
+  [<kbd>x</kbd>, "Select the focused post"],
   [<kbd>o</kbd>, "Open it on X"],
-  [<kbd>Esc</kbd>, "Close the post"],
+  [<kbd>Esc</kbd>, "Close the post or clear selection"],
 ];
 
 const SORT: Key[] = [

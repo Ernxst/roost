@@ -27,6 +27,10 @@ import {
   refreshMeta,
   saveNote,
   search,
+  selected,
+  setAsideSelected,
+  fileSelected,
+  toggleSelected,
   startSync,
   stats,
   toggleCollection,
@@ -47,6 +51,7 @@ import { WhatsNew } from "./changelog";
 import { CollectionEditor } from "./collection";
 import { inDialog, Keys } from "./keys";
 import { SearchBox } from "./search";
+import { author, AuthorHead, AuthorsView, showAuthor } from "./authors";
 import { Avatar, longDate, longDay, MediaGrid, openExternal, previewRatio, Quoted, relative, Text } from "./tweet";
 
 const same = (a: View, b: View) => JSON.stringify(a) === JSON.stringify(b);
@@ -71,6 +76,8 @@ export function App() {
           <WallView />
         ) : view.value.kind === "duplicates" ? (
           <DuplicatesView />
+        ) : view.value.kind === "authors" ? (
+          <AuthorsView />
         ) : (
           <Feed />
         )}
@@ -275,6 +282,7 @@ function Rail() {
                 </button>
               </li>
             ))}
+            <RailItem target={{ kind: "authors" }} label="All authors" disabled={isFixtureMode} />
           </ul>
         </>
       )}
@@ -424,8 +432,10 @@ function viewTitle(v: View): string {
       return "Media wall";
     case "duplicates":
       return "Duplicates";
+    case "authors":
+      return "Authors";
     case "author": {
-      const a = authors.value.find((a) => a.handle === v.handle);
+      const a = author.value?.handle.toLowerCase() === v.handle.toLowerCase() ? author.value : authors.value.find((a) => a.handle === v.handle);
       return a?.name || `@${v.handle}`;
     }
   }
@@ -489,6 +499,7 @@ function Feed() {
           {loading.value && items.value.length === 0 ? "Loading…" : count(total.value, "post")}
           {search.value && ` matching “${search.value}”`}
         </span>
+        {shown && !isFixtureMode && <ShareCollection id={shown.id} />}
         {shown && !isFixtureMode && (
           <button
             ref={editButton}
@@ -510,6 +521,7 @@ function Feed() {
           }}
         />
       )}
+      {v.kind === "author" && !isFixtureMode && <AuthorHead handle={v.handle} />}
       {!loading.value && total.value === 0 && <Empty />}
       <div class="columns" ref={desk}>
         {columns.value.map((col, i) => (
@@ -521,6 +533,7 @@ function Feed() {
         ))}
       </div>
       <div ref={sentinel} class="sentinel" aria-hidden="true" />
+      <SelectionBar />
     </section>
   );
 }
@@ -538,6 +551,124 @@ function emptyText(v: View): string {
     default:
       return "Nothing here yet.";
   }
+}
+
+/** Actions on the selected bookmarks, shown while any are selected. */
+/** Saves the collection as one Markdown file to send to someone. */
+function ShareCollection({ id }: { id: number }) {
+  const saving = useSignal(false);
+  const sharing = useSignal(false);
+  const includeNotes = useSignal(false);
+  async function share() {
+    saving.value = true;
+    try {
+      const path = await Library.shareCollection(id, includeNotes.value);
+      if (path) {
+        announce(`Saved ${path.split("/").pop()}`);
+        sharing.value = false;
+      }
+    } catch (err) {
+      fail(err);
+    } finally {
+      saving.value = false;
+    }
+  }
+  return (
+    <div class="share">
+      <button
+        class="chip"
+        type="button"
+        aria-expanded={sharing.value}
+        aria-controls="share-options"
+        onClick={() => {
+          includeNotes.value = false;
+          sharing.value = !sharing.value;
+        }}
+      >
+        Share as Markdown…
+      </button>
+      {sharing.value && (
+        <form
+          id="share-options"
+          class="share-options"
+          aria-label="Share options"
+          onSubmit={(e) => {
+            e.preventDefault();
+            share();
+          }}
+          onKeyDown={(e) => e.key === "Escape" && (sharing.value = false)}
+        >
+          <label for="include-private-notes">
+            <input
+              id="include-private-notes"
+              type="checkbox"
+              checked={includeNotes.value}
+              onChange={(e) => (includeNotes.value = e.currentTarget.checked)}
+            />
+            Include private notes and highlight notes
+          </label>
+          <div class="share-actions">
+            <button class="press quiet" type="button" disabled={saving.value} onClick={() => (sharing.value = false)}>
+              Cancel
+            </button>
+            <button class="press" type="submit" disabled={saving.value}>
+              {saving.value ? "Saving…" : "Save Markdown"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function SelectionBar() {
+  const target = useSignal("");
+  const n = selected.value.size;
+  if (n === 0) return null;
+  const v = view.value;
+  return (
+    <form
+      class="selection-bar"
+      aria-label="Selected posts"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (target.value) fileSelected(Number(target.value));
+      }}
+    >
+      <span class="selection-count">
+        {n.toLocaleString()} selected
+      </span>
+      {manual().length > 0 && (
+        <>
+          <label for="file-selected" class="sr-only">
+            Collection
+          </label>
+          <select id="file-selected" value={target.value} onChange={(e) => (target.value = e.currentTarget.value)}>
+            <option value="">Choose a collection…</option>
+            {manual().map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button class="press" type="submit" disabled={!target.value}>
+            File
+          </button>
+        </>
+      )}
+      {v.kind === "unsorted" && (
+        <button class="press quiet" type="button" onClick={setAsideSelected} title="Leave them out of the sorting queue">
+          Set aside
+        </button>
+      )}
+      <button class="press quiet" type="button" onClick={() => (selected.value = new Set(items.value.map((b) => b.tweet.id)))}>
+        Select all {items.value.length.toLocaleString()}
+      </button>
+      <button class="press quiet" type="button" onClick={() => (selected.value = new Set())}>
+        <kbd aria-hidden="true">esc</kbd>Clear
+      </button>
+    </form>
+  );
 }
 
 function Empty() {
@@ -637,8 +768,18 @@ function Sheet() {
       <div class="byline big">
         <Avatar src={t.authorAvatar} name={t.authorName} size={40} />
         <h2 class="who">
-          <span class="name" dir="auto">{t.authorName}</span>
-          <span class="handle">@{t.authorHandle}</span>
+          <button
+            class="author-link"
+            disabled={isFixtureMode}
+            onClick={() => {
+              opened.value = null;
+              showAuthor(t.authorHandle);
+            }}
+            title={`Every post kept by @${t.authorHandle}`}
+          >
+            <span class="name" dir="auto">{t.authorName}</span>
+            <span class="handle">@{t.authorHandle}</span>
+          </button>
         </h2>
       </div>
       {isFixtureMode ? (
@@ -689,7 +830,7 @@ function Sheet() {
           placeholder="Why you kept it…"
         />
       </label>
-      {!isFixtureMode && <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} />}
+      {!isFixtureMode && <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} onNote={hl.note} />}
       <p class="meta">
         Posted <time dateTime={t.createdAt}>{longDate(t.createdAt)}</time>
         <br />
@@ -723,6 +864,10 @@ function useKeyboard() {
         opened.value = null;
         return;
       }
+      if (e.key === "Escape" && selected.value.size > 0 && !typing(e)) {
+        selected.value = new Set();
+        return;
+      }
       if (typing(e)) return;
       // Search narrows the sorting queue too, so / works everywhere.
       if (e.key === "/") {
@@ -745,6 +890,8 @@ function useKeyboard() {
         opened.value = current.tweet.id;
       } else if (e.key === "o" && current) {
         Library.open(current.tweet.url);
+      } else if (e.key === "x" && current) {
+        toggleSelected(current.tweet.id);
       } else if (/^[1-9]$/.test(e.key) && current) {
         const c = manual()[Number(e.key) - 1];
         if (c) toggleCollection(current, c.id);

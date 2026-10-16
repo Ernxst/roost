@@ -4,6 +4,7 @@ go 1.27.2
 
 require (
 	codeberg.org/readeck/go-readability/v2 v2.1.3
+	github.com/ebitengine/purego v0.11.1
 	github.com/egoist/mygo v0.5.5
 	modernc.org/sqlite v1.60.1
 )
@@ -11,7 +12,6 @@ require (
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/go-shiori/dom v0.0.0-20230515143342-73569d674e1c // indirect
 	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
 	github.com/google/uuid v1.6.0 // indirect

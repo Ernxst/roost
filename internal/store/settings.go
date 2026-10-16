@@ -15,7 +15,7 @@ type Settings struct {
 	CacheVideos bool `json:"cacheVideos"`
 	// SyncEvery is the minutes between background syncs; 0 turns them off.
 	SyncEvery int `json:"syncEvery"`
-	// Notify announces new bookmarks found by a background sync.
+	// Notify announces the bookmarks a background sync found or found gone.
 	Notify bool `json:"notify"`
 	// ExportDir is where the last Markdown export went.
 	ExportDir string `json:"exportDir"`

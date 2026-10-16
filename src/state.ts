@@ -8,6 +8,7 @@ export type View =
   | { kind: "removed" }
   | { kind: "collection"; id: number }
   | { kind: "author"; handle: string }
+  | { kind: "authors" }
   | { kind: "sort" }
   | { kind: "revisit" }
   | { kind: "highlights" }
@@ -26,6 +27,15 @@ export const loading = signal(true);
 export const stats = signal<Stats | null>(null);
 export const collections = signal<Collection[]>([]);
 export const authors = signal<Author[]>([]);
+
+/** Bookmarks picked for a bulk action. */
+export const selected = signal<ReadonlySet<string>>(new Set());
+
+export function toggleSelected(id: string) {
+  const next = new Set(selected.value);
+  if (!next.delete(id)) next.add(id);
+  selected.value = next;
+}
 
 /** The bookmark the keyboard cursor is on. */
 export const cursor = signal<string | null>(null);
@@ -97,8 +107,8 @@ function loadFixtureData() {
 export async function reload() {
   if (view.value.kind === "revisit") return loadRevisit();
   if (view.value.kind === "highlights") return loadHighlights();
-  // The wall and duplicates load their own bookmarks.
-  if (view.value.kind === "wall" || view.value.kind === "duplicates") return;
+  // The wall, duplicates and authors load their own lists.
+  if (view.value.kind === "wall" || view.value.kind === "duplicates" || view.value.kind === "authors") return;
   const g = ++generation;
   loading.value = true;
   if (import.meta.env.DEV && isFixtureMode) {
@@ -200,6 +210,7 @@ effect(() => {
   view.value;
   mediaOnly.value;
   const s = search.value;
+  selected.value = new Set();
   clearTimeout(searchTimer);
   if (s !== lastSearch) {
     lastSearch = s;
@@ -314,6 +325,38 @@ export async function toggleCollection(b: Bookmark, collectionID: number) {
     fail(err);
     reload();
   }
+  refreshMeta();
+}
+
+/** Files the selected bookmarks into a collection. */
+export async function fileSelected(collectionID: number) {
+  if (isFixtureMode) return;
+  const ids = [...selected.value];
+  const name = collections.value.find((c) => c.id === collectionID)?.name ?? "the collection";
+  try {
+    for (const id of ids) await Library.setInCollection(id, collectionID, true);
+    for (const id of ids) patch(id, (x) => ({ ...x, collections: [...new Set([...x.collections, collectionID])] }));
+    selected.value = new Set();
+    announce(`Filed ${count(ids.length, "post")} under ${name}`);
+  } catch (err) {
+    fail(err);
+  }
+  reload();
+  refreshMeta();
+}
+
+/** Sets the selected bookmarks aside from the sorting queue. */
+export async function setAsideSelected() {
+  if (isFixtureMode) return;
+  const ids = [...selected.value];
+  try {
+    for (const id of ids) await Library.setAside(id, true);
+    selected.value = new Set();
+    announce(`Set ${count(ids.length, "post")} aside`);
+  } catch (err) {
+    fail(err);
+  }
+  reload();
   refreshMeta();
 }
 

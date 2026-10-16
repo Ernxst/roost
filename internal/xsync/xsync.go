@@ -60,6 +60,9 @@ type Options struct {
 	// removed. Otherwise the sync stops at the first bookmark the library
 	// already holds.
 	Full bool
+	// Background marks a full sync as unattended; suspicious removals are
+	// refused because a truncated timeline can look like an empty library.
+	Background bool
 	// Tick is the pause between scrolls; Stall is how long the sync waits
 	// without a new response before it stops; LoginTimeout is how long it
 	// waits for the user to sign in.
@@ -183,6 +186,22 @@ func run(ctx context.Context, page Page, lib *store.Store, opts Options, rec *st
 	}
 
 	if opts.Full && rec.ReachedEnd {
+		if opts.Background {
+			stats, err := lib.Stats()
+			if err != nil {
+				return err
+			}
+			missing, err := lib.UnseenCurrent(rec.StartedAt)
+			if err != nil {
+				return err
+			}
+			// Losing more than one in five current bookmarks in a single
+			// unattended sync is more likely a truncated timeline than a real
+			// mass deletion, so keep the library unchanged and retry later.
+			if stats.Total > 0 && float64(missing)/float64(stats.Total) > 0.20 {
+				return fmt.Errorf("refusing to mark %d of %d bookmarks removed in a background full sync (over 20%%)", missing, stats.Total)
+			}
+		}
 		removed, err := lib.MarkRemoved(rec.StartedAt, opts.Now())
 		if err != nil {
 			return err

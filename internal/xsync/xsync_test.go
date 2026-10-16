@@ -115,6 +115,26 @@ func TestFullSyncThatStallsRemovesNothing(t *testing.T) {
 	}
 }
 
+func TestBackgroundFullSyncRefusesLargeRemoval(t *testing.T) {
+	lib := open(t)
+	if _, err := Run(context.Background(), &fakePage{pages: timeline(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)}, lib, opts(true)); err != nil {
+		t.Fatal(err)
+	}
+	background := opts(true)
+	background.Background = true
+	rec, err := Run(context.Background(), &fakePage{pages: timeline(10, 9, 8, 7, 6, 5, 4)}, lib, background)
+	if err == nil || !strings.Contains(err.Error(), "over 20%") || rec.Removed != 0 {
+		t.Fatalf("background full sync = %+v, %v; want a refusal with no removals", rec, err)
+	}
+	stats, err := lib.Stats()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Total != 10 || stats.Removed != 0 {
+		t.Fatalf("stats after refused sync = %+v; want all ten bookmarks current", stats)
+	}
+}
+
 func TestNoResponsesFails(t *testing.T) {
 	_, err := Run(context.Background(), &fakePage{}, open(t), opts(false))
 	if err == nil {

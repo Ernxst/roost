@@ -18,6 +18,15 @@ export interface Author {
   count: number;
 }
 
+export interface AuthorSummary {
+  handle: string;
+  name: string;
+  avatar: string;
+  count: number;
+  gone: number;
+  collections: CollectionCount[];
+}
+
 export interface Bookmark {
   tweet: Tweet;
   note: string;
@@ -37,6 +46,11 @@ export interface Collection {
   count: number;
 }
 
+export interface CollectionCount {
+  id: number;
+  count: number;
+}
+
 export interface Duplicates {
   reason: string;
   key: string;
@@ -48,6 +62,7 @@ export interface Highlight {
   tweetId: string;
   source: string;
   quote: string;
+  note: string;
   createdAt: string;
   tweet?: Tweet;
 }
@@ -199,7 +214,14 @@ export const Library = {
   allHighlights(): Promise<Highlight[]> {
     return call("Library.AllHighlights");
   },
-  /** Authors lists the authors the user has bookmarked most. */
+  /** AuthorSummary describes what the library holds by one author. */
+  authorSummary(handle: string): Promise<AuthorSummary> {
+    return call("Library.AuthorSummary", handle);
+  },
+  /**
+   * Authors lists the authors the user has bookmarked most, every one of them
+   * if limit is negative.
+   */
   authors(limit: number): Promise<Author[]> {
     return call("Library.Authors", limit);
   },
@@ -297,6 +319,10 @@ export const Library = {
   setAside(tweetID: string, aside: boolean): Promise<void> {
     return call("Library.SetAside", tweetID, aside);
   },
+  /** SetHighlightNote keeps what the user wrote about a highlighted passage. */
+  setHighlightNote(id: number, note: string): Promise<void> {
+    return call("Library.SetHighlightNote", id, note);
+  },
   /** SetInCollection adds a bookmark to a collection or takes it out. */
   setInCollection(tweetID: string, collectionID: number, in_: boolean): Promise<void> {
     return call("Library.SetInCollection", tweetID, collectionID, in_);
@@ -307,6 +333,13 @@ export const Library = {
   /** Settings returns the user's preferences. */
   settings(): Promise<Settings> {
     return call("Library.Settings");
+  },
+  /**
+   * ShareCollection saves one collection as a Markdown file, optionally
+   * including private notes. It returns the file's path, or "" when cancelled.
+   */
+  shareCollection(id: number, includeNotes: boolean): Promise<string> {
+    return call("Library.ShareCollection", id, includeNotes);
   },
   /** Stats counts bookmarks and describes the last sync. */
   stats(): Promise<Stats> {

@@ -7,13 +7,17 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"roost/internal/export"
 	"roost/internal/links"
+	"roost/internal/meaning"
 	"roost/internal/media"
 	"roost/internal/store"
 	"roost/internal/xparse"
@@ -41,6 +45,10 @@ type Library struct {
 	// threading serialises thread capture, which shares one hidden page.
 	threading sync.Mutex
 	linking   sync.Mutex
+	// meaning is the sentence embedding for suggestions, or nil when this
+	// Mac has none.
+	meaning   *meaning.Model
+	embedding sync.Mutex
 	tray      *menuBar
 }
 
@@ -80,13 +88,23 @@ func (l *Library) Collections() ([]store.Collection, error) {
 	return s.Collections()
 }
 
-// Authors lists the authors the user has bookmarked most.
+// Authors lists the authors the user has bookmarked most, every one of them
+// if limit is negative.
 func (l *Library) Authors(limit int) ([]store.Author, error) {
 	s, err := l.store()
 	if err != nil {
 		return nil, err
 	}
 	return s.Authors(limit)
+}
+
+// AuthorSummary describes what the library holds by one author.
+func (l *Library) AuthorSummary(handle string) (store.AuthorSummary, error) {
+	s, err := l.store()
+	if err != nil {
+		return store.AuthorSummary{}, err
+	}
+	return s.AuthorSummary(handle)
 }
 
 // CreateCollection makes a collection; a non-empty query makes it a smart
@@ -349,6 +367,52 @@ func (l *Library) saveLinks() {
 	log.Printf("links: saved %d pages", len(urls))
 }
 
+// embedPosts gives every current bookmark a sentence vector, so suggestions
+// can weigh what posts mean. One run happens at a time.
+func (l *Library) embedPosts() {
+	if l.meaning == nil {
+		return
+	}
+	s, err := l.store()
+	if err != nil {
+		return
+	}
+	l.embedding.Lock()
+	defer l.embedding.Unlock()
+	if err := s.DropNonEnglishVectors(); err != nil {
+		log.Printf("meaning: %v", err)
+		return
+	}
+	model := l.meaning.Name()
+	total := 0
+	for {
+		posts, err := s.VectorCandidates(model, 200)
+		if err != nil {
+			log.Printf("meaning: %v", err)
+			return
+		}
+		if len(posts) == 0 {
+			break
+		}
+		vectors := make(map[string][]float32, len(posts))
+		for _, p := range posts {
+			v, ok := l.meaning.Vector(p.Text)
+			if !ok {
+				v = nil
+			}
+			vectors[p.ID] = v
+		}
+		if err := s.SaveVectors(model, vectors); err != nil {
+			log.Printf("meaning: %v", err)
+			return
+		}
+		total += len(posts)
+	}
+	if total > 0 {
+		log.Printf("meaning: embedded %d posts", total)
+	}
+}
+
 // AddHighlight keeps a passage from a post, or from a page it links to when
 // source is that page's URL.
 func (l *Library) AddHighlight(tweetID, source, quote string) (store.Highlight, error) {
@@ -365,6 +429,15 @@ func (l *Library) DeleteHighlight(id int64) error {
 		return err
 	}
 	return s.DeleteHighlight(id)
+}
+
+// SetHighlightNote keeps what the user wrote about a highlighted passage.
+func (l *Library) SetHighlightNote(id int64, note string) error {
+	s, err := l.store()
+	if err != nil {
+		return err
+	}
+	return s.SetHighlightNote(id, note)
 }
 
 func (l *Library) Highlights(tweetID string) ([]store.Highlight, error) {
@@ -418,6 +491,48 @@ func (l *Library) Export(choose bool) (export.Result, error) {
 	}
 	settings.ExportDir = dir
 	return res, s.SaveSettings(settings)
+}
+
+// ShareCollection asks where to save one collection as a Markdown file and
+// optionally includes its private notes. It returns the file's path, or "" when
+// cancelled.
+func (l *Library) ShareCollection(id int64, includeNotes bool) (string, error) {
+	s, err := l.store()
+	if err != nil {
+		return "", err
+	}
+	cols, err := s.Collections()
+	if err != nil {
+		return "", err
+	}
+	i := slices.IndexFunc(cols, func(c store.Collection) bool { return c.ID == id })
+	if i < 0 {
+		return "", fmt.Errorf("no collection %d", id)
+	}
+	c := cols[i]
+	res, err := s.List(store.Query{Collection: id, Limit: math.MaxInt32})
+	if err != nil {
+		return "", err
+	}
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{
+		Parent:      l.main,
+		Title:       "Share " + c.Name,
+		ButtonLabel: "Save",
+		DefaultPath: strings.ReplaceAll(c.Name, "/", "-") + ".md",
+		Filters:     []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md"}}},
+	})
+	if err != nil || path == "" {
+		return "", err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return "", err
+	}
+	if err := export.Collection(f, c, res.Items, s.Highlights, includeNotes); err != nil {
+		f.Close()
+		return "", err
+	}
+	return path, f.Close()
 }
 
 // Reveal shows a file or folder in Finder.
@@ -513,6 +628,7 @@ func (l *Library) startSync(full, background bool) error {
 		}
 		rec, err := xsync.Run(context.Background(), p, s, xsync.Options{
 			Full:         full,
+			Background:   background,
 			LoginTimeout: loginTimeout,
 			Progress: func(p xsync.Progress) {
 				log.Printf("sync: %s, %d seen, %d new, %d removed %s", p.Phase, p.Seen, p.Added, p.Removed, p.Message)
@@ -522,10 +638,13 @@ func (l *Library) startSync(full, background bool) error {
 		if err != nil {
 			log.Printf("sync: %v", err)
 		} else if background {
-			l.notifyAdded(s, rec)
+			l.notifySync(s, rec)
 		}
 		go l.captureThreads()
-		go l.saveLinks()
+		go func() {
+			l.saveLinks()
+			l.embedPosts()
+		}()
 		l.cacheMedia()
 	}()
 	return nil
@@ -598,9 +717,17 @@ func main() {
 		if err := mygo.Protocol.Handle(media.Scheme, library.media); err != nil {
 			log.Fatalf("media: %v", err)
 		}
+		if m, err := meaning.New(); err != nil {
+			log.Printf("meaning: %v; suggestions use words alone", err)
+		} else {
+			library.meaning = m
+		}
 		go library.cacheMedia()
 		go library.captureThreads()
-		go library.saveLinks()
+		go func() {
+			library.saveLinks()
+			library.embedPosts()
+		}()
 		go library.schedule()
 		library.main = mygo.NewWindow(mygo.WindowOptions{
 			Title:           "roost",

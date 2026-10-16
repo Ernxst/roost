@@ -21,6 +21,9 @@ describe("complete", () => {
     expect(labels("addy")).toEqual(["from:addyosmani"]);
     expect(labels("osmani")).toEqual(["from:addyosmani"]);
     expect(labels("css")).toEqual(['in:"CSS & HTML"']);
+    expect(labels("dom")).toEqual(["domain:"]);
+    expect(labels("la")).toEqual(["lang:"]);
+    expect(labels("lik")).toEqual(["likes:"]);
   });
 
   test("completes values after an operator, keeping a leading minus", () => {

@@ -100,6 +100,19 @@ CREATE TABLE highlights (
 	created_at INTEGER NOT NULL
 );
 CREATE INDEX highlights_tweet ON highlights (tweet_id);
+`, `
+CREATE VIRTUAL TABLE notes_fts USING fts5(text, tokenize = 'unicode61 remove_diacritics 2');
+INSERT INTO notes_fts (rowid, text)
+	SELECT t.rowid, b.note || ' ' || coalesce((SELECT group_concat(h.quote, ' ') FROM highlights h WHERE h.tweet_id = t.id), '')
+	FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id;
+`, `
+ALTER TABLE highlights ADD COLUMN note TEXT NOT NULL DEFAULT '';
+`, `
+CREATE TABLE vectors (
+	tweet_id TEXT PRIMARY KEY REFERENCES tweets(id),
+	model TEXT NOT NULL,
+	vector BLOB NOT NULL
+);
 `}
 
 // Open opens the library at path, creating and migrating it as needed.
@@ -115,13 +128,24 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("open library: %w", err)
 	}
 	for i := version; i < len(migrations); i++ {
-		if _, err := db.Exec(migrations[i]); err != nil {
+		tx, err := db.Begin()
+		if err != nil {
+			db.Close()
+			return nil, fmt.Errorf("begin migration to version %d: %w", i+1, err)
+		}
+		if _, err := tx.Exec(migrations[i]); err != nil {
+			tx.Rollback()
 			db.Close()
 			return nil, fmt.Errorf("migrate library to version %d: %w", i+1, err)
 		}
-		if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
+		if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
+			tx.Rollback()
 			db.Close()
 			return nil, err
+		}
+		if err := tx.Commit(); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("commit migration to version %d: %w", i+1, err)
 		}
 	}
 	s := &Store{db: db}
@@ -276,6 +300,13 @@ func (s *Store) MarkRemoved(syncStart, now time.Time) (int, error) {
 	return int(n), err
 }
 
+// UnseenCurrent counts current bookmarks not seen since the sync began.
+func (s *Store) UnseenCurrent(syncStart time.Time) (int, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT count(*) FROM bookmarks WHERE removed_at IS NULL AND last_seen_at < ?`, syncStart.UnixMilli()).Scan(&n)
+	return n, err
+}
+
 // Query selects bookmarks for the library view.
 type Query struct {
 	Search string `json:"search"`
@@ -335,19 +366,21 @@ func (s *Store) List(q Query) (ListResult, error) {
 	} else {
 		where = append(where, "b.removed_at IS NULL")
 	}
-	// Words match the post, the rest of its thread or a page it links to.
+	// Words match the post, the rest of its thread, a page it links to, or
+	// the user's own note and highlights.
 	const matches = `(t.rowid IN (SELECT rowid FROM tweets_fts WHERE tweets_fts MATCH ?)
 		OR t.rowid IN (SELECT rowid FROM threads_fts WHERE threads_fts MATCH ?)
+		OR t.rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?)
 		OR EXISTS (SELECT 1 FROM json_each(t.data, '$.links') je JOIN links l ON l.url = json_extract(je.value, '$.expanded')
 			WHERE l.rowid IN (SELECT rowid FROM links_fts WHERE links_fts MATCH ?)))`
 	if m := ftsTerms(srch.words); m != "" {
 		where = append(where, matches)
-		args = append(args, m, m, m)
+		args = append(args, m, m, m, m)
 	}
 	for _, w := range srch.notWords {
 		m := ftsTerms([]string{w})
 		where = append(where, "NOT "+matches)
-		args = append(args, m, m, m)
+		args = append(args, m, m, m, m)
 	}
 	where = append(where, srch.clauses...)
 	args = append(args, srch.args...)
@@ -563,7 +596,29 @@ func (s *Store) SetInCollection(tweetID string, collectionID int64, in bool, now
 }
 
 func (s *Store) SetNote(tweetID, note string) error {
-	_, err := s.db.Exec(`UPDATE bookmarks SET note = ? WHERE tweet_id = ?`, strings.TrimSpace(note), tweetID)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE bookmarks SET note = ? WHERE tweet_id = ?`, strings.TrimSpace(note), tweetID); err != nil {
+		return err
+	}
+	if err := indexNotes(tx, tweetID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// indexNotes makes the words the user kept about a post searchable: its
+// note, its highlights and their notes.
+func indexNotes(tx *sql.Tx, tweetID string) error {
+	if _, err := tx.Exec(`DELETE FROM notes_fts WHERE rowid = (SELECT rowid FROM tweets WHERE id = ?)`, tweetID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(`INSERT INTO notes_fts (rowid, text)
+		SELECT t.rowid, b.note || ' ' || coalesce((SELECT group_concat(h.quote || ' ' || h.note, ' ') FROM highlights h WHERE h.tweet_id = t.id), '')
+		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id WHERE t.id = ?`, tweetID)
 	return err
 }
 
@@ -574,7 +629,8 @@ type Author struct {
 	Count  int    `json:"count"`
 }
 
-// Authors returns the authors with the most current bookmarks.
+// Authors returns the authors with the most current bookmarks, every one of
+// them if limit is negative.
 func (s *Store) Authors(limit int) ([]Author, error) {
 	rows, err := s.db.Query(`
 		SELECT t.author_handle, json_extract(max(t.data), '$.authorName'), json_extract(max(t.data), '$.authorAvatar'), count(*) AS n
@@ -598,6 +654,56 @@ func (s *Store) Authors(limit int) ([]Author, error) {
 	return out, rows.Err()
 }
 
+// AuthorSummary describes what the library holds by one author.
+type AuthorSummary struct {
+	Author
+	// Gone counts the author's bookmarks removed on X.
+	Gone int `json:"gone"`
+	// Collections counts the author's current bookmarks in each collection
+	// they are filed in, most first.
+	Collections []CollectionCount `json:"collections"`
+}
+
+type CollectionCount struct {
+	ID    int64 `json:"id"`
+	Count int   `json:"count"`
+}
+
+func (s *Store) AuthorSummary(handle string) (AuthorSummary, error) {
+	var a AuthorSummary
+	var found, name, avatar sql.NullString
+	err := s.db.QueryRow(`
+		SELECT max(t.author_handle), json_extract(max(t.data), '$.authorName'), json_extract(max(t.data), '$.authorAvatar'),
+			count(*) FILTER (WHERE b.removed_at IS NULL), count(*) FILTER (WHERE b.removed_at IS NOT NULL)
+		FROM bookmarks b JOIN tweets t ON t.id = b.tweet_id
+		WHERE t.author_handle = ? COLLATE NOCASE`, handle).Scan(&found, &name, &avatar, &a.Count, &a.Gone)
+	if err != nil {
+		return a, err
+	}
+	if !found.Valid {
+		return a, fmt.Errorf("no bookmarks by @%s", handle)
+	}
+	a.Handle, a.Name, a.Avatar = found.String, name.String, avatar.String
+	rows, err := s.db.Query(`
+		SELECT ci.collection_id, count(*) AS n
+		FROM collection_items ci JOIN bookmarks b ON b.tweet_id = ci.tweet_id JOIN tweets t ON t.id = ci.tweet_id
+		WHERE t.author_handle = ? COLLATE NOCASE AND b.removed_at IS NULL
+		GROUP BY ci.collection_id ORDER BY n DESC`, handle)
+	if err != nil {
+		return a, err
+	}
+	defer rows.Close()
+	a.Collections = []CollectionCount{}
+	for rows.Next() {
+		var c CollectionCount
+		if err := rows.Scan(&c.ID, &c.Count); err != nil {
+			return a, err
+		}
+		a.Collections = append(a.Collections, c)
+	}
+	return a, rows.Err()
+}
+
 type Sync struct {
 	Full       bool      `json:"full"`
 	StartedAt  time.Time `json:"startedAt"`
@@ -614,6 +720,17 @@ func (s *Store) RecordSync(r Sync) error {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, r.Full, r.StartedAt.UnixMilli(), r.FinishedAt.UnixMilli(),
 		r.Added, r.Seen, r.Removed, r.ReachedEnd, r.Error)
 	return err
+}
+
+// LastFullSync is when a sync last read the whole timeline without error,
+// or the zero time if none has.
+func (s *Store) LastFullSync() (time.Time, error) {
+	var at sql.NullInt64
+	err := s.db.QueryRow(`SELECT max(finished_at) FROM syncs WHERE full AND reached_end AND error = ''`).Scan(&at)
+	if err != nil || !at.Valid {
+		return time.Time{}, err
+	}
+	return time.UnixMilli(at.Int64), nil
 }
 
 type Stats struct {
