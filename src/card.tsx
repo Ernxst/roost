@@ -5,8 +5,8 @@ import type { Bookmark, Collection } from "./mygo";
 import { collections, cursor, opened } from "./state";
 import { Avatar, MediaGrid, Quoted, shortDate, Text } from "./tweet";
 
-/** The ink colour of a collection's hue. */
-export const ink = (hue: number) => `oklch(0.56 0.14 ${hue})`;
+/** The ink colour of a collection's hue, dark enough on a card in either scheme to read as text. */
+export const ink = (hue: number) => `light-dark(oklch(0.48 0.14 ${hue}), oklch(0.68 0.14 ${hue}))`;
 
 export function Stamps({ b }: { b: Bookmark }) {
   const byId = new Map(collections.value.map((c) => [c.id, c]));
