@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -234,6 +235,8 @@ func TestSearchOperators(t *testing.T) {
 	}, now)
 	reading, _ := s.CreateCollection("Reading list", 10, "", now)
 	s.SetInCollection("1", reading.ID, true, now)
+	quoted, _ := s.CreateCollection(`Mum's "recipes to try"`, 10, "", now)
+	s.SetInCollection("2", quoted.ID, true, now)
 	s.SetNote("3", "check this")
 
 	cases := map[string][]string{
@@ -244,7 +247,8 @@ func TestSearchOperators(t *testing.T) {
 		"has:note":                           {"3"},
 		"check":                              {"3"},
 		`in:"reading list"`:                  {"1"},
-		"in:none":                            {"3", "2"},
+		`in:"Mum's \"recipes to try\""`:      {"2"},
+		"in:none":                            {"3"},
 		"-in:any engines":                    {"3"},
 		"before:2025-01-01":                  {"1"},
 		"after:2025-01-31 before:2025-06-30": {"3", "2"},
@@ -278,8 +282,65 @@ func TestSearchOperators(t *testing.T) {
 		t.Error("filed a post into a smart collection")
 	}
 	cols, _ := s.Collections()
-	if len(cols) != 2 || cols[1].ID != smart.ID || cols[1].Count != 2 {
+	if len(cols) != 3 || cols[2].ID != smart.ID || cols[2].Count != 2 {
 		t.Errorf("collections = %+v, want the smart one last with 2 posts", cols)
+	}
+}
+
+func TestStoreTextLimits(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "limits.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	s.Ingest([]xparse.Entry{entry("1", 1, "saved", false)}, now)
+	if _, err := s.CreateCollection(strings.Repeat("x", maxCollectionName+1), 0, "", now); err == nil {
+		t.Fatal("accepted an overlong collection name")
+	}
+	if err := s.SetNote("1", strings.Repeat("x", maxNoteLength+1)); err == nil {
+		t.Fatal("accepted an overlong note")
+	}
+	longName := strings.Repeat("n", maxCollectionName+5)
+	collection, err := s.CreateCollection("short", 0, "", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.Exec(`UPDATE collections SET name = ? WHERE id = ?`, longName, collection.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpdateCollection(collection.ID, longName, 42, ""); err != nil {
+		t.Fatalf("could not edit an existing long collection's colour: %v", err)
+	}
+	if _, err := s.db.Exec(`UPDATE bookmarks SET note = ? WHERE tweet_id = ?`, strings.Repeat("n", maxNoteLength+5), "1"); err != nil {
+		t.Fatal(err)
+	}
+	oldNote := strings.Repeat("n", maxNoteLength+5)
+	if err := s.SetNote("1", oldNote); err != nil {
+		t.Fatalf("could not save an unchanged existing long note: %v", err)
+	}
+	if err := s.SetNote("1", oldNote+"x"); err == nil {
+		t.Fatal("accepted a growing overlong note")
+	}
+	if _, err := s.AddHighlight("1", "", strings.Repeat("x", maxHighlightQuote+1), now); err == nil {
+		t.Fatal("accepted an overlong highlight")
+	}
+	if _, err := s.AddHighlight("1", "", strings.Repeat("x", maxHighlightQuote), now); err != nil {
+		t.Fatalf("rejected a highlight at the quote limit: %v", err)
+	}
+	h, err := s.AddHighlight("1", "", "quote", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetHighlightNote(h.ID, strings.Repeat("x", maxHighlightNote+1)); err == nil {
+		t.Fatal("accepted an overlong highlight note")
+	}
+	if err := s.SaveLink(links.Page{URL: "https://example.test", Title: strings.Repeat("x", 301)}, now); err != nil {
+		t.Fatal(err)
+	}
+	p, err := s.Page("https://example.test")
+	if err != nil || len([]rune(p.Title)) != 300 {
+		t.Fatalf("page title length = %d, %v", len([]rune(p.Title)), err)
 	}
 }
 

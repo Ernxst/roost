@@ -18,6 +18,14 @@ import (
 
 type Store struct{ db *sql.DB }
 
+const (
+	maxCollectionName = 80
+	maxNoteLength     = 2000
+	maxHighlightQuote = 10000
+	maxHighlightNote  = 500
+	maxSearchLength   = 500
+)
+
 var migrations = []string{`
 CREATE TABLE tweets (
 	rowid INTEGER PRIMARY KEY,
@@ -550,6 +558,9 @@ func (s *Store) CreateCollection(name string, hue int, query string, now time.Ti
 	if name == "" {
 		return Collection{}, errors.New("a collection needs a name")
 	}
+	if len([]rune(name)) > maxCollectionName || len([]rune(query)) > maxSearchLength {
+		return Collection{}, errors.New("collection name or search is too long")
+	}
 	c := Collection{Name: name, Hue: hue, Query: strings.TrimSpace(query)}
 	err := s.db.QueryRow(`INSERT INTO collections (name, hue, query, created_at) VALUES (?, ?, ?, ?) RETURNING id`,
 		name, hue, c.Query, now.UnixMilli()).Scan(&c.ID)
@@ -563,6 +574,13 @@ func (s *Store) UpdateCollection(id int64, name string, hue int, query string) e
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("a collection needs a name")
+	}
+	var oldName string
+	if err := s.db.QueryRow(`SELECT name FROM collections WHERE id = ?`, id).Scan(&oldName); err != nil {
+		return err
+	}
+	if (len([]rune(name)) > maxCollectionName && len([]rune(name)) > len([]rune(oldName))) || len([]rune(query)) > maxSearchLength {
+		return errors.New("collection name or search is too long")
 	}
 	_, err := s.db.Exec(`UPDATE collections SET name = ?, hue = ?, query = ? WHERE id = ?`, name, hue, strings.TrimSpace(query), id)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
@@ -601,6 +619,13 @@ func (s *Store) SetNote(tweetID, note string) error {
 		return err
 	}
 	defer tx.Rollback()
+	var oldNote string
+	if err := tx.QueryRow(`SELECT note FROM bookmarks WHERE tweet_id = ?`, tweetID).Scan(&oldNote); err != nil {
+		return err
+	}
+	if len([]rune(note)) > maxNoteLength && len([]rune(note)) > len([]rune(oldNote)) {
+		return errors.New("field note is too long")
+	}
 	if _, err := tx.Exec(`UPDATE bookmarks SET note = ? WHERE tweet_id = ?`, strings.TrimSpace(note), tweetID); err != nil {
 		return err
 	}

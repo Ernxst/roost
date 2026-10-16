@@ -30,6 +30,9 @@ func (s *Store) AddHighlight(tweetID, source, quote string, now time.Time) (High
 	if quote == "" {
 		return Highlight{}, errors.New("select some text to highlight")
 	}
+	if len([]rune(quote)) > maxHighlightQuote {
+		return Highlight{}, errors.New("highlight is too long")
+	}
 	h := Highlight{TweetID: tweetID, Source: source, Quote: quote, CreatedAt: time.UnixMilli(now.UnixMilli())}
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -53,6 +56,9 @@ func (s *Store) RestoreHighlight(h Highlight) error {
 	h.Note = strings.TrimSpace(h.Note)
 	if h.ID <= 0 || h.TweetID == "" || h.Quote == "" || h.CreatedAt.IsZero() {
 		return errors.New("that highlight cannot be restored")
+	}
+	if len([]rune(h.Quote)) > maxHighlightQuote || len([]rune(h.Note)) > maxHighlightNote {
+		return errors.New("that highlight is too long")
 	}
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -90,6 +96,9 @@ func (s *Store) DeleteHighlight(id int64) error {
 }
 
 func (s *Store) SetHighlightNote(id int64, note string) error {
+	if len([]rune(note)) > maxHighlightNote {
+		return errors.New("highlight note is too long")
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
