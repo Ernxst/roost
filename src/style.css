@@ -356,7 +356,7 @@ kbd {
   }
 }
 .card.cursor { outline: 2px solid var(--accent); outline-offset: 3px; }
-.card.gone { opacity: 0.78; }
+.card.gone .media img { filter: grayscale(1) contrast(0.9); }
 
 .card .open {
   position: absolute;
