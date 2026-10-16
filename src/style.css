@@ -418,13 +418,19 @@ div.empty p { margin: 0 0 14px; }
 .card .open:focus-visible { outline-offset: 3px; }
 .card a, .card video, .card .translated button { position: relative; z-index: 2; }
 
-.byline { display: flex; align-items: center; gap: 9px; min-width: 0; }
+/* The name and date share the first line's baseline, so a name that wraps
+   keeps its date beside the first line; the avatar centres on the byline. */
+.byline { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+.byline .avatar { align-self: center; }
 /* Names wrap rather than truncate: the card's open button covers the byline,
    so a cut-off name would have no way to show the rest. */
 .byline .who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 7px; min-width: 0; flex: 1; }
 .byline .name { font-weight: 600; font-size: 15px; min-width: 0; overflow-wrap: anywhere; }
 .byline .handle { max-width: 100%; font: 11px var(--mono); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .byline time { font: 11px var(--mono); color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Pads one line of name to the avatar's height, centring it as before. */
+header.byline .who { padding-block: 3px; }
+.card.big header.byline .who { padding-block: 7px; }
 .byline.big .name { font-size: 19px; }
 .byline.big .who { flex-direction: column; gap: 2px; margin: 0; font: inherit; }
 
