@@ -160,6 +160,12 @@ export interface Sync {
   error: string;
 }
 
+export interface Translation {
+  text: string;
+  from: string;
+  to: string;
+}
+
 export interface Tweet {
   id: string;
   url: string;
@@ -172,6 +178,7 @@ export interface Tweet {
   links: Link[];
   quoted?: Tweet;
   replyTo?: string;
+  translation?: Translation;
 }
 
 // ---- Services ----

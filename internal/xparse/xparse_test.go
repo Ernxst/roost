@@ -69,3 +69,25 @@ func TestParseEndOfTimeline(t *testing.T) {
 		t.Fatalf("got %d entries, err %v; want none", len(entries), err)
 	}
 }
+
+func TestParseTranslation(t *testing.T) {
+	const post = `{"rest_id":"4","core":{"user_results":{"result":{"core":{"screen_name":"jp","name":"JP"}}}},
+	  "legacy":{"created_at":"Mon Jun 28 04:13:47 +0000 2021","full_text":"見て https://t.co/m","lang":"ja",
+	    "extended_entities":{"media":[{"type":"photo","url":"https://t.co/m","media_url_https":"https://pbs.twimg.com/p.jpg"}]}},
+	  "grok_translated_post_with_availability":{"is_available":true,"data":{"source_language":"ja","destination_language":"en","translation":"Look https://t.co/m"}}}`
+	tw, ok := ParseTweet([]byte(post))
+	if !ok {
+		t.Fatal("post not parsed")
+	}
+	want := Translation{Text: "Look", From: "ja", To: "en"}
+	if tw.Translation == nil || *tw.Translation != want {
+		t.Errorf("translation = %+v, want %+v with the media link stripped", tw.Translation, want)
+	}
+
+	const english = `{"rest_id":"5","core":{"user_results":{"result":{"core":{"screen_name":"en"}}}},
+	  "legacy":{"created_at":"Mon Jun 28 04:13:47 +0000 2021","full_text":"hello","lang":"en"},
+	  "grok_translated_post_with_availability":{"is_available":false}}`
+	if tw, _ := ParseTweet([]byte(english)); tw.Translation != nil {
+		t.Errorf("a post in the reader's language got translation %+v", tw.Translation)
+	}
+}
