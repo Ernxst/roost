@@ -3,7 +3,6 @@ import { useEffect, useRef } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { Library, type Bookmark, type Highlight } from "./mygo";
 import { announce, fail, highlights, openPost } from "./state";
-import { isFixtureMode } from "./fixture-mode";
 import { Avatar, shortDate } from "./tweet";
 
 /**
@@ -129,7 +128,6 @@ function HighlightNote({ h, onSave }: { h: Highlight; onSave: (id: number, note:
         dir="auto"
         rows={1}
         value={note.value}
-        disabled={isFixtureMode}
         placeholder="Add a note…"
         onInput={(e) => {
           note.value = e.currentTarget.value;

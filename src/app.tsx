@@ -1,7 +1,7 @@
 import { signal, useComputed, useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { Library, type Bookmark, type Collection } from "./mygo";
-import { fixtureHref, fixtureMode, isFixtureMode, type FixtureMode } from "./fixture-mode";
+import { fixtureHref, fixtureMode, type FixtureMode } from "./fixture-mode";
 import {
   announce,
   announcement,
@@ -216,17 +216,17 @@ function Rail({ inert }: { inert: boolean }) {
 
       <ul class="rail-list">
         <RailItem target={{ kind: "all" }} label="Everything" count={s?.total} />
-        <RailItem target={{ kind: "unsorted" }} label="Unsorted" count={s?.unsorted} disabled={isFixtureMode} />
-        {!!s?.removed && <RailItem target={{ kind: "removed" }} label="Missing from bookmarks" count={s.removed} disabled={isFixtureMode} />}
+        <RailItem target={{ kind: "unsorted" }} label="Unsorted" count={s?.unsorted} />
+        {!!s?.removed && <RailItem target={{ kind: "removed" }} label="Missing from bookmarks" count={s.removed} />}
       </ul>
 
       <h2 class="rail-heading">Rituals</h2>
       <ul class="rail-list">
-        <RailItem target={{ kind: "sort" }} label="Sort the unsorted" count={s?.toSort} disabled={isFixtureMode} />
-        <RailItem target={{ kind: "revisit" }} label="Revisit" disabled={isFixtureMode} />
-        <RailItem target={{ kind: "highlights" }} label="Highlights" disabled={isFixtureMode} />
-        <RailItem target={{ kind: "wall" }} label="Media wall" disabled={isFixtureMode} />
-        <RailItem target={{ kind: "duplicates" }} label="Duplicates" disabled={isFixtureMode} />
+        <RailItem target={{ kind: "sort" }} label="Sort the unsorted" count={s?.toSort} />
+        <RailItem target={{ kind: "revisit" }} label="Revisit" />
+        <RailItem target={{ kind: "highlights" }} label="Highlights" />
+        <RailItem target={{ kind: "wall" }} label="Media wall" />
+        <RailItem target={{ kind: "duplicates" }} label="Duplicates" />
       </ul>
 
       <h2 class="rail-heading">Collections</h2>
@@ -239,7 +239,6 @@ function Rail({ inert }: { inert: boolean }) {
             count={c.count}
             hue={c.hue}
             smart={c.query || undefined}
-            disabled={isFixtureMode}
           />
         ))}
       </ul>
@@ -267,7 +266,7 @@ function Rail({ inert }: { inert: boolean }) {
           )}
         </form>
       ) : (
-          <button class="add" disabled={isFixtureMode} onClick={() => (adding.value = true)}>
+          <button class="add" onClick={() => (adding.value = true)}>
           + New collection
         </button>
       )}
@@ -281,7 +280,6 @@ function Rail({ inert }: { inert: boolean }) {
                 <button
                   class="rail-item"
                   aria-current={same(view.value, { kind: "author", handle: a.handle }) ? "page" : undefined}
-                  disabled={isFixtureMode}
                   onClick={() => (view.value = { kind: "author", handle: a.handle })}
                   title={a.name || a.handle}
                 >
@@ -291,14 +289,14 @@ function Rail({ inert }: { inert: boolean }) {
                 </button>
               </li>
             ))}
-            <RailItem target={{ kind: "authors" }} label="All authors" disabled={isFixtureMode} />
+            <RailItem target={{ kind: "authors" }} label="All authors" />
           </ul>
         </>
       )}
       <div class="rail-foot">
-        {!isFixtureMode && <SettingsButton />}
+        <SettingsButton />
         <Keys />
-        {!isFixtureMode && <WhatsNew />}
+        <WhatsNew />
       </div>
     </nav>
   );
@@ -357,15 +355,15 @@ function Toolbar() {
       {showFeedFilters && (
         <>
           <SearchBox />
-          {search.value.trim() && !isFixtureMode && <SaveSearch />}
-          <button class="chip" disabled={isFixtureMode} aria-pressed={mediaOnly.value} onClick={() => (mediaOnly.value = !mediaOnly.value)}>
+          {search.value.trim() && <SaveSearch />}
+          <button class="chip" aria-pressed={mediaOnly.value} onClick={() => (mediaOnly.value = !mediaOnly.value)}>
             With media
           </button>
         </>
       )}
       <div class="sync">
         <SyncStatus />
-        <button class="press" disabled={syncing.value || isFixtureMode} onClick={() => startSync(false)}>
+        <button class="press" disabled={syncing.value} onClick={() => startSync(false)}>
           Sync
         </button>
       </div>
@@ -516,8 +514,8 @@ function Feed() {
           {loading.value && items.value.length === 0 ? "Loading…" : count(total.value, "post")}
           {search.value && ` matching “${search.value}”`}
         </span>
-        {shown && !isFixtureMode && <ShareCollection id={shown.id} />}
-        {shown && !isFixtureMode && (
+        {shown && <ShareCollection id={shown.id} />}
+        {shown && (
           <button
             ref={editButton}
             class="chip edit"
@@ -538,7 +536,7 @@ function Feed() {
           }}
         />
       )}
-      {v.kind === "author" && !isFixtureMode && <AuthorHead handle={v.handle} />}
+      {v.kind === "author" && <AuthorHead handle={v.handle} />}
       {!loading.value && total.value === 0 && <Empty />}
       <div class="columns" ref={desk}>
         {columns.value.map((col, i) => (
@@ -722,10 +720,10 @@ function Empty() {
       <p class="lede">The journal is empty.</p>
       <p>Sync to read your bookmarks from X. A window opens if X asks you to sign in.</p>
       <div class="row">
-        <button class="press" disabled={isFixtureMode} onClick={() => startSync(true)}>
+        <button class="press" onClick={() => startSync(true)}>
           Sync from X
         </button>
-        <button class="press quiet" disabled={isFixtureMode} onClick={importFile}>
+        <button class="press quiet" onClick={importFile}>
           Import an export…
         </button>
       </div>
@@ -814,7 +812,6 @@ function Sheet({ lastFocused }: { lastFocused: { current: HTMLElement | null } }
         <h2 class="who">
           <button
             class="author-link"
-            disabled={isFixtureMode}
             onClick={() => {
               opened.value = null;
               showAuthor(t.authorHandle);
@@ -826,31 +823,20 @@ function Sheet({ lastFocused }: { lastFocused: { current: HTMLElement | null } }
           </button>
         </h2>
       </div>
-      {isFixtureMode ? (
-        <>
-          {t.text && <Text tweet={t} />}
-          <MediaGrid media={t.media} playable />
-          {t.quoted && <Quoted tweet={t.quoted} />}
-          <Thread b={b} />
-        </>
-      ) : (
-        <>
-          <Highlighter tweetId={t.id} onAdd={hl.add}>
-            {t.text && <Text tweet={t} mark={(s) => marked(s, quotes)} />}
-            <MediaGrid media={t.media} playable />
-            {t.quoted && <Quoted tweet={t.quoted} />}
-            <Thread b={b} />
-          </Highlighter>
-          <Links b={b} onRead={(url) => (reading.value = url)} />
-        </>
-      )}
+      <Highlighter tweetId={t.id} onAdd={hl.add}>
+        {t.text && <Text tweet={t} mark={(s) => marked(s, quotes)} />}
+        <MediaGrid media={t.media} playable />
+        {t.quoted && <Quoted tweet={t.quoted} />}
+        <Thread b={b} />
+      </Highlighter>
+      <Links b={b} onRead={(url) => (reading.value = url)} />
       <fieldset class="file-under">
         <legend>File under</legend>
         <SuggestedChips ids={suggested.value} onFile={(id) => toggleCollection(b, id)} />
         {manual().length === 0 && <p class="hint">Make a collection in the sidebar to file posts.</p>}
         {manual().map((c, i) => (
           <label key={c.id} class="check" style={{ "--hue": ink(c.hue) }}>
-            <input type="checkbox" disabled={isFixtureMode} checked={b.collections.includes(c.id)} onChange={() => toggleCollection(b, c.id)} />
+            <input type="checkbox" checked={b.collections.includes(c.id)} onChange={() => toggleCollection(b, c.id)} />
             <span>{c.name}</span>
             {i < 9 && <kbd aria-hidden="true">{i + 1}</kbd>}
           </label>
@@ -864,7 +850,6 @@ function Sheet({ lastFocused }: { lastFocused: { current: HTMLElement | null } }
           dir="auto"
           rows={4}
           value={note.value}
-          disabled={isFixtureMode}
           onInput={(e) => {
             note.value = e.currentTarget.value;
             clearTimeout(noteTimer);
@@ -874,7 +859,7 @@ function Sheet({ lastFocused }: { lastFocused: { current: HTMLElement | null } }
           placeholder="Why you kept it…"
         />
       </label>
-      {!isFixtureMode && <HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} onNote={hl.note} />}
+      {<HighlightList list={hl.list.value.filter((h) => !h.source)} onDelete={hl.remove} onNote={hl.note} />}
       <p class="meta">
         Posted <time dateTime={t.createdAt}>{longDate(t.createdAt)}</time>
         <br />

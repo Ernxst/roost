@@ -1,7 +1,6 @@
 import { useComputed, useSignal } from "@preact/signals";
 import { useRef } from "preact/hooks";
 import { accept, complete, type Suggestion } from "./autocomplete";
-import { isFixtureMode } from "./fixture-mode";
 import { Library, type Author } from "./mygo";
 import { authors, collections, count, search, stats } from "./state";
 
@@ -38,7 +37,7 @@ export function SearchBox() {
 
   function focus() {
     focused.value = true;
-    if (!everyone.value && !isFixtureMode) Library.authors(-1).then((a) => (everyone.value = a));
+    if (!everyone.value) Library.authors(-1).then((a) => (everyone.value = a));
   }
 
   function sync(el: HTMLInputElement) {
