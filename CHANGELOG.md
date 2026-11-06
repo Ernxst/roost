@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- roost keeps articles written on X. A post that publishes one shows the
+  article's title and opening lines, and search finds it by its title.
+  roost saves the whole article in the background after a sync, and you
+  read it from the post's Linked section with Read the saved copy, where
+  you can highlight it and search its text.
+- Posts you already kept show their articles the first time this version
+  opens.
+
 ## 0.2.1
 
 Sync reads your whole library again, roost has a new icon, and long names,
