@@ -176,6 +176,14 @@ const edgeCases: Bookmark[] = [
     media: [video("fixture-gone", 1080, 1350)],
   }), { removedAt: iso(-4 * DAY), threadLength: 18 }),
   bookmark(tweet("fixture-worst-17", emoji, "Set aside from sorting: it waits outside the queue."), { asideAt: iso(-DAY) }),
+  bookmark(tweet("fixture-worst-18", longName, "", undefined, {
+    links: [{ short: "https://t.co/articlelk1", expanded: "https://x.com/i/article/1900000000000000018", display: "x.com/i/article/1900000000000000018" }],
+    article: {
+      url: "https://x.com/i/article/1900000000000000018",
+      title: "What two years of keeping every bookmark taught me about reading later, and the habits that finally emptied the pile",
+      preview: "Most read-later systems fail in the same place: saving is free and reading is not. This article walks through the three habits that changed that, with the numbers from two years of a library that never stopped growing until it did.",
+    },
+  })),
 ];
 
 // A believable library for screenshots: made-up people, everyday posts and

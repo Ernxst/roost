@@ -3,7 +3,7 @@ import { Component } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Bookmark, Collection } from "./mygo";
 import { collections, cursor, opened, selected, toggleSelected } from "./state";
-import { Avatar, MediaGrid, Quoted, shortDate, Text } from "./tweet";
+import { ArticlePreview, Avatar, MediaGrid, Quoted, shortDate, Text } from "./tweet";
 
 /** The ink colour of a collection's hue, dark enough on a card in either scheme to read as text. */
 export const ink = (hue: number) => `light-dark(oklch(0.48 0.14 ${hue}), oklch(0.68 0.14 ${hue}))`;
@@ -91,6 +91,7 @@ function CardBody({ b }: { b: Bookmark }) {
       {t.text && <Text tweet={t} />}
       {clipped && <button class="show-more" onClick={() => ((opened.value = t.id), (cursor.value = t.id))}>Show more</button>}
       <MediaGrid media={t.media} />
+      {t.article && <ArticlePreview article={t.article} />}
       {t.quoted && <Quoted tweet={t.quoted} />}
       {b.note && <p class="note-preview" dir="auto">{b.note}</p>}
       <Stamps b={b} />

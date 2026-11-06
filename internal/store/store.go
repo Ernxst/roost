@@ -169,7 +169,7 @@ func (s *Store) Close() error { return s.db.Close() }
 // parserVersion rises whenever xparse reads a field it did not read before.
 // Opening a library written by an older parser parses every post again from
 // the raw object it keeps, so posts saved earlier gain the field.
-const parserVersion = 2
+const parserVersion = 3
 
 func (s *Store) reparse() error {
 	var version int
@@ -226,12 +226,15 @@ func (s *Store) reparse() error {
 	return tx.Commit()
 }
 
-// index makes a post findable by its text and its translation, its author,
-// and the post it quotes.
+// index makes a post findable by its text and its translation, the title
+// and opening of its article, its author, and the post it quotes.
 func index(tx *sql.Tx, rowid int64, t xparse.Tweet) error {
 	text := t.Text
 	if t.Translation != nil {
 		text += "\n" + t.Translation.Text
+	}
+	if a := t.Article; a != nil {
+		text += "\n" + a.Title + "\n" + a.Preview
 	}
 	quoted := ""
 	if q := t.Quoted; q != nil {

@@ -32,6 +32,8 @@ type Tweet struct {
 	Media        []Media   `json:"media"`
 	Links        []Link    `json:"links"`
 	Quoted       *Tweet    `json:"quoted,omitempty"`
+	// Article is the X article the post publishes, if it has one.
+	Article *Article `json:"article,omitempty"`
 	// ReplyTo is the ID of the post this one replies to.
 	ReplyTo string `json:"replyTo,omitempty"`
 	// Translation is X's translation of Text into the reader's language,
@@ -132,6 +134,7 @@ func parseTweet(node any) (Tweet, bool) {
 	for _, u := range list(urls) {
 		t.Links = append(t.Links, Link{Short: str(dig(u, "url")), Expanded: str(dig(u, "expanded_url")), Display: str(dig(u, "display_url"))})
 	}
+	parseArticle(r, &t)
 
 	media := list(dig(legacy, "extended_entities", "media"))
 	for _, m := range media {

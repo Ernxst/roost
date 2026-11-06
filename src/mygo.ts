@@ -11,6 +11,12 @@ export interface About {
   changelog: string;
 }
 
+export interface Article {
+  url: string;
+  title: string;
+  preview: string;
+}
+
 export interface Author {
   handle: string;
   name: string;
@@ -193,6 +199,7 @@ export interface Tweet {
   media: Media[];
   links: Link[];
   quoted?: Tweet;
+  article?: Article;
   replyTo?: string;
   translation?: Translation;
 }

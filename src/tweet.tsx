@@ -1,6 +1,6 @@
 import type { ComponentChildren, JSX } from "preact";
 import { useState } from "preact/hooks";
-import { Library, type Media, type Tweet } from "./mygo";
+import { Library, type Article, type Media, type Tweet } from "./mygo";
 
 const entities: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
 const decode = (s: string) => s.replace(/&(amp|lt|gt|quot|#39);/g, (m) => entities[m] ?? m);
@@ -210,6 +210,16 @@ export function MediaGrid({ media, playable = false }: { media: Media[]; playabl
           </figure>
         );
       })}
+    </div>
+  );
+}
+
+/** The title and opening lines of the X article a post publishes. */
+export function ArticlePreview({ article }: { article: Article }) {
+  return (
+    <div class="article-preview">
+      <p class="article-title" dir="auto">{article.title || "Untitled article"}</p>
+      {article.preview && <p class="article-text" dir="auto">{article.preview}</p>}
     </div>
   );
 }

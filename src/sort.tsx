@@ -5,7 +5,7 @@ import { inDialog } from "./keys";
 import { Library, type Bookmark } from "./mygo";
 import { announce, createCollection, fail, file, items, loading, manual, opened, reload, setAside, stats, total } from "./state";
 import { useSuggestions } from "./suggest";
-import { Avatar, MediaGrid, openExternal, Quoted, shortDate, Text } from "./tweet";
+import { ArticlePreview, Avatar, MediaGrid, openExternal, Quoted, shortDate, Text } from "./tweet";
 
 type Action = { b: Bookmark; kind: "file"; collection: number } | { b: Bookmark; kind: "aside" | "skip" };
 
@@ -228,6 +228,7 @@ function SortCard({ b }: { b: Bookmark }) {
       </header>
       {t.text && <Text tweet={t} />}
       <MediaGrid media={t.media} playable />
+      {t.article && <ArticlePreview article={t.article} />}
       {t.quoted && <Quoted tweet={t.quoted} />}
       <Stamps b={b} />
       <a class="press link quiet" href={t.url} onClick={(e) => openExternal(e, t.url)}>
