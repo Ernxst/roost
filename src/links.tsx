@@ -9,11 +9,15 @@ import { openExternal } from "./tweet";
 /** The pages a post links to, with the saved copy of each where there is one. */
 export function Links({ b, onRead }: { b: Bookmark; onRead: (url: string) => void }) {
   const list = useSignal<SavedLink[]>([]);
+  const article = b.tweet.article;
   useEffect(() => {
     list.value = [];
     if (b.tweet.links.length)
       Library.links(b.tweet.id).then(
-        (l) => (list.value = l.filter((x) => !/^https?:\/\/(www\.)?(x|twitter)\.com\//.test(x.expanded))),
+        (l) =>
+          (list.value = l.filter(
+            (x) => x.expanded === article?.url || !/^https?:\/\/(www\.)?(x|twitter)\.com\//.test(x.expanded),
+          )),
       );
   }, [b.tweet.id]);
   if (list.value.length === 0) return null;
@@ -21,24 +25,28 @@ export function Links({ b, onRead }: { b: Bookmark; onRead: (url: string) => voi
     <section class="links" aria-label="Links">
       <h3 class="legend">Linked</h3>
       <ul>
-        {list.value.map((l) => (
-          <li key={l.expanded} class="link-card">
-            <span class="site">{l.page?.site || l.display.split("/")[0]}</span>
-            <a class="title" href={l.expanded} onClick={(e) => openExternal(e, l.expanded)}>
-              {l.page?.title || l.display}
-            </a>
-            {l.page?.excerpt && <p class="excerpt">{l.page.excerpt}</p>}
-            {l.hasText ? (
-              <button class="add" onClick={() => onRead(l.expanded)}>
-                Read the saved copy
-              </button>
-            ) : (
-              <div class="link-status">
-                {l.page ? <>{linkError(l.page.error ?? "")}{l.page.error && <details><summary>Details</summary><code>{l.page.error}</code></details>}</> : "Not fetched yet"}
-              </div>
-            )}
-          </li>
-        ))}
+        {list.value.map((l) => {
+          const own = l.expanded === article?.url ? article : undefined;
+          const excerpt = l.page?.excerpt || own?.preview;
+          return (
+            <li key={l.expanded} class="link-card">
+              <span class="site">{l.page?.site || (own ? "X article" : l.display.split("/")[0])}</span>
+              <a class="title" href={l.expanded} onClick={(e) => openExternal(e, l.expanded)}>
+                {l.page?.title || own?.title || l.display}
+              </a>
+              {excerpt && <p class="excerpt">{excerpt}</p>}
+              {l.hasText ? (
+                <button class="add" onClick={() => onRead(l.expanded)}>
+                  Read the saved copy
+                </button>
+              ) : (
+                <div class="link-status">
+                  {l.page ? <>{linkError(l.page.error ?? "")}{l.page.error && <details><summary>Details</summary><code>{l.page.error}</code></details>}</> : own ? "Not saved yet: roost reads it from X after the next sync" : "Not fetched yet"}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -46,6 +54,7 @@ export function Links({ b, onRead }: { b: Bookmark; onRead: (url: string) => voi
 
 function linkError(error: string) {
   if (!error) return "Not saved: page text could not be read.";
+  if (/^X sent the article/.test(error)) return "Not saved: X sent the article without its text.";
   if (/timeout|deadline/i.test(error)) return "Not saved: the site took too long to respond.";
   if (/tls|certificate|handshake/i.test(error)) return "Not saved: the site’s secure connection failed.";
   if (/lookup|dial tcp|connection refused|network/i.test(error)) return "Not saved: the site could not be reached.";

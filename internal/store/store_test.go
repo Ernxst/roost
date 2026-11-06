@@ -428,7 +428,7 @@ func TestThreads(t *testing.T) {
 		entry("1", 10, "how shaders work 🧵", false),
 		entry("2", 20, "a lone post", false),
 	}, now)
-	cands, err := s.ThreadCandidates(10)
+	cands, err := s.DetailCandidates(10)
 	if err != nil || len(cands) != 1 || cands[0].ID != "1" {
 		t.Fatalf("candidates = %+v, %v", cands, err)
 	}
@@ -436,7 +436,7 @@ func TestThreads(t *testing.T) {
 	if err := s.SaveThread("1", posts, now); err != nil {
 		t.Fatal(err)
 	}
-	if cands, _ := s.ThreadCandidates(10); len(cands) != 0 {
+	if cands, _ := s.DetailCandidates(10); len(cands) != 0 {
 		t.Errorf("checked post is still a candidate: %+v", cands)
 	}
 	if got := ids(t, s, Query{Search: "rasteriser"}); !equal(got, []string{"1"}) {
@@ -451,6 +451,68 @@ func TestThreads(t *testing.T) {
 	}
 	if got, _ := s.Thread("1"); len(got) != 2 {
 		t.Errorf("thread = %+v", got)
+	}
+}
+
+func TestArticles(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	e := entry("1", 10, "https://t.co/a", false)
+	e.Tweet.Links = []xparse.Link{{Short: "https://t.co/a", Expanded: "https://x.com/i/article/77"}}
+	e.Tweet.Article = &xparse.Article{URL: "https://x.com/i/article/77", Title: "Invert, always invert", Preview: "A roadmap full of solutions"}
+	s.Ingest([]xparse.Entry{e, entry("2", 20, "a lone post", false)}, now)
+	if err := s.SaveThread("1", nil, now); err != nil {
+		t.Fatal(err)
+	}
+
+	cands, err := s.DetailCandidates(10)
+	if err != nil || len(cands) != 1 || cands[0].ID != "1" || cands[0].Article != "https://x.com/i/article/77" {
+		t.Fatalf("candidates = %+v, %v", cands, err)
+	}
+	if got := ids(t, s, Query{Search: "invert"}); !equal(got, []string{"1"}) {
+		t.Errorf("search for the article title = %v", got)
+	}
+	e.Tweet.Article.Text = "Name the assumption behind each solution."
+	if err := s.SaveArticle(e.Tweet, now); err != nil {
+		t.Fatal(err)
+	}
+	if cands, _ := s.DetailCandidates(10); len(cands) != 0 {
+		t.Errorf("saved article is still a candidate: %+v", cands)
+	}
+	if got := ids(t, s, Query{Search: "assumption"}); !equal(got, []string{"1"}) {
+		t.Errorf("search in the article = %v", got)
+	}
+	if got := ids(t, s, Query{Search: "has:article"}); !equal(got, []string{"1"}) {
+		t.Errorf("has:article = %v", got)
+	}
+	p, _ := s.Page("https://x.com/i/article/77")
+	if p == nil || p.Title != "Invert, always invert" || p.Byline != "Ada Lovelace" || p.Excerpt != "A roadmap full of solutions" {
+		t.Errorf("page = %+v", p)
+	}
+}
+
+func TestArticleWithoutText(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "lib.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1000, 0)
+	e := entry("1", 10, "", false)
+	e.Tweet.Article = &xparse.Article{URL: "https://x.com/i/article/77", Title: "Invert"}
+	s.Ingest([]xparse.Entry{e}, now)
+	if err := s.SaveArticle(e.Tweet, now); err != nil {
+		t.Fatal(err)
+	}
+	if p, _ := s.Page("https://x.com/i/article/77"); p == nil || p.Error == "" {
+		t.Errorf("page = %+v, want an error", p)
+	}
+	if cands, _ := s.DetailCandidates(10); len(cands) != 0 {
+		t.Errorf("article without text is still a candidate: %+v", cands)
 	}
 }
 

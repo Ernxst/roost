@@ -66,6 +66,18 @@ func (s *Store) SaveLink(p links.Page, now time.Time) error {
 	return tx.Commit()
 }
 
+// SaveArticle keeps the X article a post publishes as the saved copy of
+// the post's link to it. An article X sent without its text is saved with
+// an error, so roost does not open the post again for it.
+func (s *Store) SaveArticle(t xparse.Tweet, now time.Time) error {
+	a := t.Article
+	p := links.Page{URL: a.URL, FinalURL: a.URL, Title: a.Title, Site: "X", Byline: t.AuthorName, Excerpt: a.Preview, Text: a.Text}
+	if p.Text == "" {
+		p.Error = "X sent the article without its text"
+	}
+	return s.SaveLink(p, now)
+}
+
 // SavedLink is a link in a post with what roost saved of the page, without
 // its text.
 type SavedLink struct {

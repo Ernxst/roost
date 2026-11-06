@@ -256,58 +256,80 @@ func (l *Library) LoadThread(tweetID, url string) ([]xparse.Tweet, error) {
 	defer l.threading.Unlock()
 	page := openSyncPage(l.main, "about:blank")
 	defer page.Close()
-	posts, err := xsync.Thread(context.Background(), page, store.ThreadCandidate{ID: tweetID, URL: url}, 0)
+	d, err := xsync.Open(context.Background(), page, store.DetailCandidate{ID: tweetID, URL: url}, 0)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.SaveThread(tweetID, posts, time.Now()); err != nil {
+	if err := s.SaveThread(tweetID, d.Thread, time.Now()); err != nil {
 		return nil, err
 	}
-	if posts == nil {
-		posts = []xparse.Tweet{}
+	if d.Post.Article != nil {
+		if err := s.SaveArticle(d.Post, time.Now()); err != nil {
+			return nil, err
+		}
 	}
-	return posts, nil
+	if d.Thread == nil {
+		return []xparse.Tweet{}, nil
+	}
+	return d.Thread, nil
 }
 
-// captureThreads checks bookmarks that look like part of a thread and keeps
-// the threads they belong to. It works through a batch at a gentle pace and
-// stops if X is signed out.
-func (l *Library) captureThreads() {
+// openPosts opens bookmarks on X one at a time, keeping the threads they
+// belong to and the articles they publish. It works through a batch at a
+// gentle pace. It stops if X is signed out, or if X sends nothing for three
+// posts in a row, which suggests X is limiting requests.
+func (l *Library) openPosts() {
 	s, err := l.store()
 	if err != nil {
 		return
 	}
 	l.threading.Lock()
 	defer l.threading.Unlock()
-	cands, err := s.ThreadCandidates(200)
+	cands, err := s.DetailCandidates(200)
 	if err != nil || len(cands) == 0 {
 		return
 	}
 	page := openSyncPage(l.main, "about:blank")
 	defer page.Close()
-	found := 0
+	opened, threads, articles, empty := 0, 0, 0, 0
 	for _, c := range cands {
-		posts, err := xsync.Thread(context.Background(), page, c, 0)
+		d, err := xsync.Open(context.Background(), page, c, 0)
 		if errors.Is(err, xsync.ErrSignedOut) {
-			log.Printf("threads: X is signed out; stopping")
+			log.Printf("posts: X is signed out; stopping")
 			break
 		}
-		if err != nil {
-			log.Printf("threads: %s: %v", c.ID, err)
+		if errors.Is(err, xsync.ErrNothing) {
+			if empty++; empty == 3 {
+				log.Printf("posts: X sent nothing for 3 posts in a row; stopping")
+				break
+			}
 			continue
 		}
-		if err := s.SaveThread(c.ID, posts, time.Now()); err != nil {
-			log.Printf("threads: %v", err)
+		empty = 0
+		if err != nil {
+			log.Printf("posts: %s: %v", c.ID, err)
+			continue
+		}
+		opened++
+		if err := s.SaveThread(c.ID, d.Thread, time.Now()); err != nil {
+			log.Printf("posts: %v", err)
 			return
 		}
-		if posts != nil {
-			found++
+		if d.Thread != nil {
+			threads++
+		}
+		if c.Article != "" && d.Post.Article != nil {
+			if err := s.SaveArticle(d.Post, time.Now()); err != nil {
+				log.Printf("posts: %v", err)
+				return
+			}
+			articles++
 		}
 		time.Sleep(1500 * time.Millisecond)
 	}
-	log.Printf("threads: checked %d posts, %d threads", len(cands), found)
-	if found > 0 {
-		ThreadsFound.Broadcast(found)
+	log.Printf("posts: opened %d of %d, found %d threads and %d articles", opened, len(cands), threads, articles)
+	if threads > 0 {
+		ThreadsFound.Broadcast(threads)
 		go l.cacheMedia()
 	}
 }
@@ -654,7 +676,7 @@ func (l *Library) startSync(full, background bool) error {
 		} else if background {
 			l.notifySync(s, rec)
 		}
-		go l.captureThreads()
+		go l.openPosts()
 		go func() {
 			l.saveLinks()
 			l.embedPosts()
@@ -737,7 +759,7 @@ func main() {
 			library.meaning = m
 		}
 		go library.cacheMedia()
-		go library.captureThreads()
+		go library.openPosts()
 		go func() {
 			library.saveLinks()
 			library.embedPosts()

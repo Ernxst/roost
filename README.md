@@ -70,7 +70,7 @@ bookmarks arrive.
 - **Media wall** shows every photo and video you've kept.
 - **Duplicates** finds bookmarks that share a post, a link or a picture.
 - Open a post to read its whole thread, write a note on it, or read the
-  article it links to.
+  article it links to. roost keeps articles written on X too.
 - **Export** in Settings saves your library as Markdown notes, which
   Obsidian and most other notes apps can open.
 - Press `?` to see every keyboard shortcut.

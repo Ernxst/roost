@@ -9,8 +9,8 @@ import (
 	"roost/internal/xparse"
 )
 
-// DetailPage is the X page thread capture drives: it opens one post at a
-// time and collects X's TweetDetail responses for it.
+// DetailPage is the X page roost opens posts in, one at a time, collecting
+// X's TweetDetail responses for each.
 type DetailPage interface {
 	URL() (string, error)
 	Load(url string) error
@@ -20,19 +20,33 @@ type DetailPage interface {
 	Scroll() error
 }
 
-// ErrSignedOut means X wants the user to sign in. Thread capture runs in
-// the background, so it stops instead of asking.
+// ErrSignedOut means X wants the user to sign in. Posts are opened in the
+// background, so roost stops instead of asking.
 var ErrSignedOut = errors.New("signed out of X")
 
-// Thread opens a post and returns its thread, scrolling until X stops
-// sending more of it. It returns nil when the post stands alone.
-func Thread(ctx context.Context, page DetailPage, c store.ThreadCandidate, tick time.Duration) ([]xparse.Tweet, error) {
+// ErrNothing means X sent no response for a post. A run of them suggests X
+// is limiting requests.
+var ErrNothing = errors.New("X sent nothing")
+
+// Detail is what X shows of a post opened on its own.
+type Detail struct {
+	// Post is the post itself, which carries the whole text of its article.
+	// It is empty if X left the post out.
+	Post xparse.Tweet
+	// Thread is the post's thread in reading order, or nil when the post
+	// stands alone.
+	Thread []xparse.Tweet
+}
+
+// Open opens a post and reads it with its thread, scrolling until X stops
+// sending more of the thread.
+func Open(ctx context.Context, page DetailPage, c store.DetailCandidate, tick time.Duration) (Detail, error) {
 	if tick == 0 {
 		tick = time.Second
 	}
 	page.DrainDetail()
 	if err := page.Load(c.URL); err != nil {
-		return nil, err
+		return Detail{}, err
 	}
 	var bodies []string
 	var chain []xparse.Tweet
@@ -40,15 +54,15 @@ func Thread(ctx context.Context, page DetailPage, c store.ThreadCandidate, tick 
 	for i := 0; i < 20 && idle < 3; i++ {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return Detail{}, ctx.Err()
 		case <-time.After(tick):
 		}
 		if u, err := page.URL(); err == nil && isLogin(u) {
-			return nil, ErrSignedOut
+			return Detail{}, ErrSignedOut
 		}
 		got, err := page.DrainDetail()
 		if err != nil {
-			return nil, err
+			return Detail{}, err
 		}
 		bodies = append(bodies, got...)
 		if len(bodies) == 0 {
@@ -56,7 +70,7 @@ func Thread(ctx context.Context, page DetailPage, c store.ThreadCandidate, tick 
 		}
 		next, err := xparse.Thread(bodies, c.ID)
 		if err != nil {
-			return nil, err
+			return Detail{}, err
 		}
 		if len(next) > len(chain) {
 			chain, idle = next, 0
@@ -66,7 +80,8 @@ func Thread(ctx context.Context, page DetailPage, c store.ThreadCandidate, tick 
 		page.Scroll()
 	}
 	if len(bodies) == 0 {
-		return nil, errors.New("X sent nothing for " + c.URL)
+		return Detail{}, ErrNothing
 	}
-	return chain, nil
+	post, _, err := xparse.Post(bodies, c.ID)
+	return Detail{Post: post, Thread: chain}, err
 }
